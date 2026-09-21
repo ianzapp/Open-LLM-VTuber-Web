@@ -5,9 +5,17 @@ import { useTextInput } from '@/hooks/footer/use-text-input';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useMicToggle } from '@/hooks/utils/use-mic-toggle';
 import { notify } from '@/utils/notify';
-import { micVisualState } from './logic/mic-state';
+import { micVisualState, type MicVisual } from './logic/mic-state';
 
-export function ChatBar(): JSX.Element {
+const MIC_LABEL: Record<MicVisual, string> = {
+  off: 'Turn microphone on',
+  listening: 'Listening — tap to turn the microphone off',
+  thinking: 'Thinking',
+  speaking: 'She is speaking',
+  unavailable: 'Voice needs the HTTPS address',
+};
+
+export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; onToggleThread: () => void }): JSX.Element {
   const text = useTextInput();
   const area = useRef<HTMLTextAreaElement>(null);
   const { aiState } = useAiState();
@@ -48,6 +56,9 @@ export function ChatBar(): JSX.Element {
 
   return (
     <div className="cm-chatbar cm-island" data-testid="chat-bar">
+      <button type="button" className="cm-round" data-testid="thread-toggle" aria-pressed={threadOpen}
+        aria-label={threadOpen ? 'Close conversation' : 'Open conversation'}
+        onPointerDown={(e) => e.preventDefault()} onClick={onToggleThread}>≡</button>
       <textarea
         ref={area}
         className="cm-input"
@@ -60,12 +71,17 @@ export function ChatBar(): JSX.Element {
         onCompositionStart={text.handleCompositionStart}
         onCompositionEnd={text.handleCompositionEnd}
       />
-      {speaking ? (
-        <button type="button" className="cm-round" aria-label="Interrupt" onPointerDown={(e) => e.preventDefault()} onClick={() => interrupt()}>✋</button>
-      ) : (
-        <button type="button" className="cm-round cm-mic-small" data-state={visual} aria-label="Microphone" onPointerDown={(e) => e.preventDefault()} onClick={onMic}>🎙</button>
+      {speaking && (
+        <button type="button" className="cm-round" aria-label="Interrupt"
+          onPointerDown={(e) => e.preventDefault()} onClick={() => interrupt()}>✋</button>
       )}
-      <button type="button" className="cm-round cm-send" aria-label="Send" disabled={!canSend} onPointerDown={(e) => e.preventDefault()} onClick={send}>↑</button>
+      {canSend ? (
+        <button type="button" className="cm-round cm-send" aria-label="Send"
+          onPointerDown={(e) => e.preventDefault()} onClick={send}>↑</button>
+      ) : (
+        <button type="button" className="cm-round cm-mic-small" data-testid="mic" data-state={visual} aria-label={MIC_LABEL[visual]}
+          onPointerDown={(e) => e.preventDefault()} onClick={onMic}><span aria-hidden="true">🎙</span></button>
+      )}
     </div>
   );
 }

@@ -33,7 +33,6 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  transition: bottom 0.25s ease;
 }
 
 .cm-canvas-host canvas {
@@ -116,30 +115,7 @@
   .cm-root * { animation: none !important; transition: none !important; }
 }
 
-.cm-captions {
-  margin: 0 22px 12px;
-  text-align: center;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.85);
-  pointer-events: none; /* text never blocks the avatar */
-}
-.cm-caption {
-  margin: 0;
-  font-size: clamp(15px, 4.2vw, 20px);
-  line-height: 1.35;
-  font-weight: 500;
-  opacity: 0;
-  transition: opacity 0.6s ease;
-}
-.cm-caption[data-visible='true'] { opacity: 1; }
-.cm-heard {
-  margin: 0 0 6px;
-  font-size: 13px;
-  color: var(--cm-muted);
-}
-
-.cm-dock { margin: 0 12px 14px; }
-.cm-buttons { display: flex; align-items: center; justify-content: center; gap: 28px; }
-.cm-round, .cm-mic {
+.cm-round {
   border: 1px solid var(--cm-line);
   color: var(--cm-text);
   background: var(--cm-glass);
@@ -148,35 +124,18 @@
   border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 18px;
+  width: 46px; height: 46px;
 }
-.cm-round { width: 46px; height: 46px; }
 .cm-round:disabled { opacity: 0.35; }
-.cm-mic { width: 68px; height: 68px; font-size: 26px; }
-.cm-mic[data-state='listening'] { background: var(--cm-accent); color: var(--cm-bg); box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.16); }
-.cm-mic[data-state='thinking'] { animation: cm-pulse 1.2s ease-in-out infinite; }
-.cm-mic[data-state='speaking'] { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0.25); }
-.cm-mic[data-state='unavailable'] { opacity: 0.45; }
 @keyframes cm-pulse { 50% { transform: scale(0.92); opacity: 0.7; } }
 
-/* Chat mode: she keeps the top 40%; the conversation gets the rest. */
-.cm-root[data-mode='chat'] .cm-canvas-host { bottom: 60%; }
-.cm-root[data-mode='chat'] .cm-overlay { justify-content: flex-start; }
-
-.cm-chat {
-  margin-top: auto;
-  height: 60%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, rgba(9, 10, 16, 0) 0, rgba(9, 10, 16, 0.92) 28px, var(--cm-bg) 100%);
-}
 .cm-thread-wrap { position: relative; flex: 1; min-height: 0; }
 .cm-thread {
   height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 28px 14px 8px;
+  padding: 6px 12px 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -234,8 +193,54 @@
 .cm-mic-small[data-state='listening'] { background: var(--cm-accent); color: var(--cm-bg); }
 .cm-mic-small[data-state='unavailable'] { opacity: 0.45; }
 
+/* One screen: the stage between the top strip and the bar holds bubbles or the sheet. */
+.cm-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+
+/* Floating bubbles: display only. No .cm-island, so touches fall through to the avatar. */
+.cm-float { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 4px; }
+.cm-float .cm-bubble {
+  max-height: 34vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; /* a long reply shows its newest lines */
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  opacity: 1;
+  transition: opacity 0.7s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cm-float .cm-bubble > span { flex: none; }
+.cm-float .cm-bubble[data-role='ai'] { background: rgba(14, 16, 24, 0.62); border: 1px solid var(--cm-line); }
+.cm-float .cm-bubble[data-role='human'] { background: rgba(255, 255, 255, 0.86); }
+.cm-float .cm-bubble[data-fading='true'] { opacity: 0; }
+
+/* The full conversation, on request. */
+.cm-sheet {
+  margin: 0 10px;
+  height: 58vh;
+  max-height: calc(100% - 8px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  border: 1px solid var(--cm-line);
+  background: rgba(9, 10, 16, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
+}
+.cm-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 16px; font-size: 13px; font-weight: 600; color: var(--cm-muted); }
+.cm-sheet-close { width: 32px; height: 32px; font-size: 13px; }
+
+.cm-chatbar { margin-bottom: 10px; }
+.cm-mic-small[data-state='thinking'] { animation: cm-pulse 1.2s ease-in-out infinite; }
+.cm-mic-small[data-state='speaking'] { box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.3); }
+
 @media (min-width: 821px) {
-  /* Desktop: she keeps the left; the conversation docks right. */
-  .cm-root[data-mode='chat'] .cm-canvas-host { bottom: 0; right: 440px; }
-  .cm-root[data-mode='chat'] .cm-chat { position: absolute; top: 56px; right: 0; bottom: 0; width: 440px; height: auto; margin: 0; background: rgba(9, 10, 16, 0.88); border-left: 1px solid var(--cm-line); }
+  /* Desktop: bubbles, sheet and bar form one column on the right; she keeps the rest. */
+  .cm-stage, .cm-chatbar { width: 440px; align-self: flex-end; }
+  .cm-stage { padding-right: 6px; }
+  .cm-chatbar { margin-right: 16px; }
 }

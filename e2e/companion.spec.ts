@@ -56,9 +56,11 @@ test('a finger can drag the avatar', async ({ page, browserName }, testInfo) => 
   expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y)).toBeGreaterThan(0.01);
 });
 
-test('chat mode: controls are tappable and the mode is remembered', async ({ page }) => {
-  await page.getByTestId('mode-toggle').click();
+test('the bar is always there and the conversation sheet opens and closes', async ({ page }) => {
   await expect(page.getByTestId('chat-bar')).toBeVisible();
+  await expect(page.getByTestId('mic')).toBeVisible();
+  await page.getByTestId('thread-toggle').click();
+  await expect(page.getByTestId('thread-sheet')).toBeVisible();
   const blocked = await page.evaluate(() => {
     const out: string[] = [];
     document.querySelectorAll<HTMLElement>('.cm-island button, .cm-island textarea, button.cm-island').forEach((el) => {
@@ -70,24 +72,32 @@ test('chat mode: controls are tappable and the mode is remembered', async ({ pag
     return out;
   });
   expect(blocked).toEqual([]);
-  await page.reload();
-  await page.waitForSelector('#canvas');
-  await expect(page.getByTestId('chat-bar')).toBeVisible();
+  await page.getByTestId('thread-toggle').click();
+  await expect(page.getByTestId('thread-sheet')).toHaveCount(0);
 });
 
-test('chat mode: a typed message shows up and she answers in the thread', async ({ page }) => {
-  await page.getByTestId('mode-toggle').click();
+test('a typed message floats over the avatar, she answers, and the sheet keeps both', async ({ page }) => {
   const input = page.locator('.cm-input');
   await input.fill('Say hello in five words.');
   await input.press('Enter');
-  await expect(page.locator('.cm-bubble[data-role="human"]').last()).toHaveText('Say hello in five words.');
+  const mine = page.locator('.cm-float .cm-bubble[data-role="human"]').last();
+  await expect(mine).toHaveText('Say hello in five words.');
   await expect(input).toHaveValue('');
-  await expect(page.locator('.cm-bubble[data-role="ai"]:not(.cm-typing)').last()).toBeVisible({ timeout: 40_000 });
-  await expect(page.locator('.cm-bubble[data-role="ai"]:not(.cm-typing)').last()).not.toContainText('[');
+  // A bubble is display only: the point under it still belongs to the avatar.
+  const under = await mine.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.id ?? null;
+  });
+  expect(under).toBe('canvas');
+  const hers = page.locator('.cm-float .cm-bubble[data-role="ai"]:not(.cm-typing)').last();
+  await expect(hers).toBeVisible({ timeout: 40_000 });
+  await expect(hers).not.toContainText('[');
+  await page.getByTestId('thread-toggle').click();
+  await expect(page.locator('.cm-thread .cm-bubble[data-role="human"]').last()).toHaveText('Say hello in five words.');
+  await expect(page.locator('.cm-thread .cm-bubble[data-role="ai"]:not(.cm-typing)').last()).toBeVisible();
 });
 
-test('chat mode: Shift+Enter makes a new line instead of sending', async ({ page }) => {
-  await page.getByTestId('mode-toggle').click();
+test('Shift+Enter makes a new line instead of sending', async ({ page }) => {
   const input = page.locator('.cm-input');
   await input.fill('line one');
   await input.press('Shift+Enter');
