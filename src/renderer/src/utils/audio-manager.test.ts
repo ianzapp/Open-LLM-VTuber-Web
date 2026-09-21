@@ -38,6 +38,21 @@ describe('AudioManager', () => {
     expect(player.play).toHaveBeenCalledTimes(1);
   });
 
+  it('markLocked() makes unlock() repeatable', async () => {
+    const manager = new AudioManager();
+    manager.unlock();
+    const player = manager.getPlayer() as unknown as FakeAudio;
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(manager.isUnlocked()).toBe(true);
+
+    manager.markLocked();
+    expect(manager.isUnlocked()).toBe(false);
+
+    manager.unlock();
+    expect(player.play).toHaveBeenCalledTimes(2);
+  });
+
   it('unlock() does nothing while there is current audio', () => {
     const manager = new AudioManager();
     const player = manager.getPlayer();

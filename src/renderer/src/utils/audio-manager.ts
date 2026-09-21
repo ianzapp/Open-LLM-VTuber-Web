@@ -39,6 +39,9 @@ export class AudioManager {
   /** Real audio played: the element is certainly unlocked. */
   markUnlocked(): void { this.unlocked = true; }
 
+  /** A real sentence hit NotAllowedError: the element is locked again (e.g. after backgrounding on iOS). */
+  markLocked(): void { this.unlocked = false; }
+
   /**
    * Set the current playing audio
    */

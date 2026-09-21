@@ -206,6 +206,8 @@ class WebSocketService {
   disconnect() {
     this.ws?.close();
     this.ws = null;
+    this.currentState = 'CLOSED';
+    this.stateSubject.next('CLOSED');
   }
 
   getCurrentState() {

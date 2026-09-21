@@ -153,23 +153,25 @@ export const useAudioTask = () => {
         let isFinished = false;
         let started = false;
         let watchdog: number | undefined;
+        let giveUp: number | undefined;
 
         const cleanup = () => {
+          if (isFinished) return;
+          isFinished = true;
           window.clearTimeout(watchdog);
+          window.clearTimeout(giveUp);
           audio.removeEventListener('canplaythrough', onCanPlay);
           audio.removeEventListener('ended', onEnded);
           audio.removeEventListener('error', onError);
           audioManager.clearCurrentAudio(audio);
-          if (!isFinished) {
-            isFinished = true;
-            resolve();
-          }
+          resolve();
         };
 
         // Enhance lip sync sensitivity
         const lipSyncScale = 2.0;
 
         const onCanPlay = () => {
+          if (audio.src !== audioDataUrl) return;
           if (started) return;
           started = true;
           // Check for interruption before playback
@@ -184,7 +186,9 @@ export const useAudioTask = () => {
             audioManager.markUnlocked();
             soundBlockedWarned = false;
           }).catch((err) => {
+            if (isFinished || err?.name === 'AbortError') return;
             console.error('Audio play error:', err);
+            if (err?.name === 'NotAllowedError') audioManager.markLocked();
             if (!soundBlockedWarned) {
               soundBlockedWarned = true;
               notify('warning', 'Tap the screen once to turn her voice on');
@@ -214,17 +218,22 @@ export const useAudioTask = () => {
             }
           }
         };
-        const onEnded = () => { console.log('Audio playback completed'); cleanup(); };
+        const onEnded = () => {
+          if (audio.src !== audioDataUrl) return;
+          console.log('Audio playback completed');
+          cleanup();
+        };
         const onError = (error: Event) => { console.error('Audio playback error:', error); cleanup(); };
 
         audioManager.setCurrentAudio(audio, model, cleanup);
         audio.addEventListener('canplaythrough', onCanPlay);
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('error', onError);
-        // If the browser never reports the audio as playable, do not stall the whole queue.
-        watchdog = window.setTimeout(() => { if (!started) { console.warn('Audio never became playable; skipping'); cleanup(); } }, 8000);
+        // iOS can withhold 'canplaythrough' until play() is called: do not wait for it for long.
+        watchdog = window.setTimeout(() => { if (!started && !isFinished) onCanPlay(); }, 1500);
+        // Last resort: a sentence that never starts AND never errors cannot stall the queue.
+        giveUp = window.setTimeout(() => { if (audio.paused && audio.currentTime === 0) { console.warn('Audio never started; skipping'); cleanup(); } }, 12000);
         audio.src = audioDataUrl;
-        audio.load();
       } else {
         resolve();
       }
