@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useAiState, AiStateEnum } from '@/context/ai-state-context';
 import { useLive2DConfig } from '@/context/live2d-config-context';
 import { useLive2DExpression } from '@/hooks/canvas/use-live2d-expression';
+import { useAutoReconnect } from '@/hooks/utils/use-auto-reconnect';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useIpcHandlers } from '@/hooks/utils/use-ipc-handlers';
 
@@ -18,6 +19,7 @@ export function EngineEffects(): null {
 
   useIpcHandlers();
   useInterrupt();
+  useAutoReconnect(window.api === undefined);
 
   useEffect(() => {
     if (aiState !== AiStateEnum.IDLE) return;
