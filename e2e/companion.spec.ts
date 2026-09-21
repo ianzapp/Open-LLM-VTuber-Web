@@ -21,6 +21,7 @@ test('every control receives its own tap', async ({ page }) => {
     });
     return out;
   });
+  expect(await page.locator('.cm-island').count()).toBeGreaterThan(3);
   expect(blocked).toEqual([]);
 });
 

@@ -19,4 +19,13 @@ describe('joinSentences', () => {
   it('adds a space after a caption tag', () => {
     expect(joinSentences('[joy]', 'Great!')).toBe('[joy] Great!');
   });
+  it('does not add a space before closing punctuation', () => {
+    expect(joinSentences('I promise', ').')).toBe('I promise).');
+  });
+  it('does not add a space before a continuing ellipsis', () => {
+    expect(joinSentences('Wait', '...what?')).toBe('Wait...what?');
+  });
+  it('adds a space before an opening quote', () => {
+    expect(joinSentences('He said.', '"Hi"')).toBe('He said. "Hi"');
+  });
 });

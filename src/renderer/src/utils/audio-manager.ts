@@ -1,17 +1,51 @@
+// 44-byte WAV header + 2 silent 8-bit samples.
+const SILENT_WAV = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAACAgA==';
+
 /**
  * Global audio manager for handling audio playback and interruption
  * This ensures all components share the same audio reference
  */
-class AudioManager {
+export class AudioManager {
   private currentAudio: HTMLAudioElement | null = null;
   private currentModel: any | null = null;
+  private player: HTMLAudioElement | null = null;
+  private unlocked = false;
+  private currentOnStop: (() => void) | null = null;
+
+  /** The one audio element every sentence plays through (iOS unlocks per element). */
+  getPlayer(): HTMLAudioElement {
+    if (!this.player) {
+      this.player = new Audio();
+      this.player.preload = 'auto';
+      this.player.setAttribute('playsinline', '');
+    }
+    return this.player;
+  }
+
+  isUnlocked(): boolean { return this.unlocked; }
+
+  /** Call from a user gesture. Plays a moment of silence so later play() calls are allowed. */
+  unlock(): void {
+    if (this.unlocked || this.currentAudio) return;
+    const player = this.getPlayer();
+    player.src = SILENT_WAV;
+    player.play().then(() => {
+      this.unlocked = true;
+      // A real sentence may have taken the element over in the meantime: leave it alone.
+      if (player.src === SILENT_WAV) player.pause();
+    }).catch(() => { /* not a gesture after all; the next one tries again */ });
+  }
+
+  /** Real audio played: the element is certainly unlocked. */
+  markUnlocked(): void { this.unlocked = true; }
 
   /**
    * Set the current playing audio
    */
-  setCurrentAudio(audio: HTMLAudioElement, model: any) {
+  setCurrentAudio(audio: HTMLAudioElement, model: any, onStop?: () => void) {
     this.currentAudio = audio;
     this.currentModel = model;
+    this.currentOnStop = onStop ?? null;
   }
 
   /**
@@ -21,11 +55,11 @@ class AudioManager {
     if (this.currentAudio) {
       console.log('[AudioManager] Stopping current audio and lip sync');
       const audio = this.currentAudio;
-      
+
       // Stop audio playback
       audio.pause();
-      audio.src = '';
-      audio.load();
+      // The shared player keeps its src: blanking it fires an async 'error' that could land on the next sentence.
+      if (audio !== this.player) { audio.src = ''; audio.load(); }
 
       // Stop Live2D lip sync
       const model = this.currentModel;
@@ -52,6 +86,9 @@ class AudioManager {
       // Clear references
       this.currentAudio = null;
       this.currentModel = null;
+      const onStop = this.currentOnStop;
+      this.currentOnStop = null;
+      onStop?.();
     } else {
       console.log('[AudioManager] No current audio playing to stop.');
     }
@@ -64,6 +101,7 @@ class AudioManager {
     if (this.currentAudio === audio) {
       this.currentAudio = null;
       this.currentModel = null;
+      this.currentOnStop = null;
     }
   }
 

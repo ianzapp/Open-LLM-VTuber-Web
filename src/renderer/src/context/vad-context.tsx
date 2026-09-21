@@ -1,6 +1,6 @@
 /* eslint-disable no-use-before-define */
 import {
-  createContext, useContext, useRef, useCallback, useEffect, useReducer, useMemo,
+  createContext, useContext, useRef, useCallback, useEffect, useReducer, useMemo, useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MicVAD } from '@ricky0123/vad-web';
@@ -111,7 +111,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
   const previousAiStateRef = useRef<AiState>('idle');
 
   // Persistent state management
-  const [micOn, setMicOn] = useLocalStorage('micOn', DEFAULT_VAD_STATE.micOn);
+  const [micOn, setMicOn] = useState(DEFAULT_VAD_STATE.micOn);
   const autoStopMicRef = useRef(true);
   const [autoStopMic, setAutoStopMicState] = useLocalStorage(
     'autoStopMic',
@@ -257,6 +257,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     // Restore previous AI state and show helpful misfire message
     setAiStateRef.current(previousAiStateRef.current);
     setSubtitleTextRef.current(t('error.vadMisfire'));
+    notify('info', t('error.vadMisfire'));
   }, [t]);
 
   /**

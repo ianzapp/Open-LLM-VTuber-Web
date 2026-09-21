@@ -4,6 +4,7 @@ import { useSubtitle } from '@/context/subtitle-context';
 import { useTextInput } from '@/hooks/footer/use-text-input';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useMicToggle } from '@/hooks/utils/use-mic-toggle';
+import { useWebSocket } from '@/context/websocket-context';
 import { notify } from '@/utils/notify';
 import { micVisualState, type MicVisual } from './logic/mic-state';
 
@@ -22,6 +23,7 @@ export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; o
   const { subtitleText } = useSubtitle();
   const { handleMicToggle, micOn } = useMicToggle();
   const { interrupt } = useInterrupt();
+  const { wsState } = useWebSocket();
 
   const speaking = aiState === 'thinking-speaking';
   const visual = micVisualState({
@@ -42,6 +44,10 @@ export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; o
 
   const send = () => {
     if (!canSend) return;
+    if (wsState !== 'OPEN') {
+      notify('warning', 'Reconnecting…', 'Your message was not sent. It is still in the box.');
+      return;
+    }
     void text.handleSend();
     area.current?.focus(); // keep the keyboard up for the next message
   };
@@ -67,7 +73,14 @@ export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; o
         enterKeyHint="send"
         value={text.inputText}
         onChange={(e) => text.setInputText(e as never)}
-        onKeyDown={(e) => text.handleKeyPress(e as never)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && wsState !== 'OPEN') {
+            e.preventDefault();
+            notify('warning', 'Reconnecting…', 'Your message was not sent. It is still in the box.');
+            return;
+          }
+          text.handleKeyPress(e as never);
+        }}
         onCompositionStart={text.handleCompositionStart}
         onCompositionEnd={text.handleCompositionEnd}
       />

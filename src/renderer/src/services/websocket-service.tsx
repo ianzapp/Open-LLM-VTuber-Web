@@ -146,16 +146,19 @@ class WebSocketService {
 
     try {
       this.ws = new WebSocket(url);
+      const ws = this.ws;
       this.currentState = 'CONNECTING';
       this.stateSubject.next('CONNECTING');
 
-      this.ws.onopen = () => {
+      ws.onopen = () => {
+        if (this.ws !== ws) return;
         this.currentState = 'OPEN';
         this.stateSubject.next('OPEN');
         this.initializeConnection();
       };
 
-      this.ws.onmessage = (event) => {
+      ws.onmessage = (event) => {
+        if (this.ws !== ws) return;
         try {
           const message = JSON.parse(event.data);
           this.messageSubject.next(message);
@@ -165,12 +168,14 @@ class WebSocketService {
         }
       };
 
-      this.ws.onclose = () => {
+      ws.onclose = () => {
+        if (this.ws !== ws) return;
         this.currentState = 'CLOSED';
         this.stateSubject.next('CLOSED');
       };
 
-      this.ws.onerror = () => {
+      ws.onerror = () => {
+        if (this.ws !== ws) return;
         this.currentState = 'CLOSED';
         this.stateSubject.next('CLOSED');
       };

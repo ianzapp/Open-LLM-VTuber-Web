@@ -4,6 +4,6 @@ export function joinSentences(prev: string, next: string): string {
   if (/\s$/.test(prev) || /^\s/.test(next)) return prev + next;
   // CJK and other scripts are written without spaces between sentences.
   const latinEnd = /[\x21-\x7e]$/.test(prev);
-  const latinStart = /^[\x21-\x7e]/.test(next);
+  const latinStart = /^[A-Za-z0-9[("“‘]/.test(next);
   return latinEnd && latinStart ? `${prev} ${next}` : prev + next;
 }

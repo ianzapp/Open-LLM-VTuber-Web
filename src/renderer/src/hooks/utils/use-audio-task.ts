@@ -17,6 +17,8 @@ import * as LAppDefine from '../../../WebSDK/src/lappdefine';
 // Simple type alias for Live2D model
 type Live2DModel = any;
 
+let soundBlockedWarned = false;
+
 interface AudioTaskOptions {
   audioBase64: string
   volumes: number[]
@@ -146,14 +148,17 @@ export const useAudioTask = () => {
           console.warn("LAppDefine.PriorityNormal not found - cannot start talk motion");
         }
 
-        // Setup audio element
-        const audio = new Audio(audioDataUrl);
-        
-        // Register with global audio manager IMMEDIATELY after creating audio
-        audioManager.setCurrentAudio(audio, model);
+        // One shared element: iOS only lets an element play without a gesture once that element was unlocked.
+        const audio = audioManager.getPlayer();
         let isFinished = false;
+        let started = false;
+        let watchdog: number | undefined;
 
         const cleanup = () => {
+          window.clearTimeout(watchdog);
+          audio.removeEventListener('canplaythrough', onCanPlay);
+          audio.removeEventListener('ended', onEnded);
+          audio.removeEventListener('error', onError);
           audioManager.clearCurrentAudio(audio);
           if (!isFinished) {
             isFinished = true;
@@ -164,7 +169,9 @@ export const useAudioTask = () => {
         // Enhance lip sync sensitivity
         const lipSyncScale = 2.0;
 
-        audio.addEventListener('canplaythrough', () => {
+        const onCanPlay = () => {
+          if (started) return;
+          started = true;
           // Check for interruption before playback
           if (stateRef.current.aiState === 'interrupted' || !audioManager.hasCurrentAudio()) {
             console.warn('Audio playback cancelled due to interruption or audio was stopped');
@@ -173,8 +180,15 @@ export const useAudioTask = () => {
           }
 
           console.log('Starting audio playback with lip sync');
-          audio.play().catch((err) => {
-            console.error("Audio play error:", err);
+          audio.play().then(() => {
+            audioManager.markUnlocked();
+            soundBlockedWarned = false;
+          }).catch((err) => {
+            console.error('Audio play error:', err);
+            if (!soundBlockedWarned) {
+              soundBlockedWarned = true;
+              notify('warning', 'Tap the screen once to turn her voice on');
+            }
             cleanup();
           });
 
@@ -199,18 +213,17 @@ export const useAudioTask = () => {
               console.warn('WavFileHandler start skipped - audio was stopped');
             }
           }
-        });
+        };
+        const onEnded = () => { console.log('Audio playback completed'); cleanup(); };
+        const onError = (error: Event) => { console.error('Audio playback error:', error); cleanup(); };
 
-        audio.addEventListener('ended', () => {
-          console.log("Audio playback completed");
-          cleanup();
-        });
-
-        audio.addEventListener('error', (error) => {
-          console.error("Audio playback error:", error);
-          cleanup();
-        });
-
+        audioManager.setCurrentAudio(audio, model, cleanup);
+        audio.addEventListener('canplaythrough', onCanPlay);
+        audio.addEventListener('ended', onEnded);
+        audio.addEventListener('error', onError);
+        // If the browser never reports the audio as playable, do not stall the whole queue.
+        watchdog = window.setTimeout(() => { if (!started) { console.warn('Audio never became playable; skipping'); cleanup(); } }, 8000);
+        audio.src = audioDataUrl;
         audio.load();
       } else {
         resolve();
