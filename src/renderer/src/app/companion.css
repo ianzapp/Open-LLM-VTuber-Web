@@ -135,3 +135,24 @@
   font-size: 13px;
   color: var(--cm-muted);
 }
+
+.cm-dock { margin: 0 12px 14px; }
+.cm-buttons { display: flex; align-items: center; justify-content: center; gap: 28px; }
+.cm-round, .cm-mic {
+  border: 1px solid var(--cm-line);
+  color: var(--cm-text);
+  background: var(--cm-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.cm-round { width: 46px; height: 46px; }
+.cm-round:disabled { opacity: 0.35; }
+.cm-mic { width: 68px; height: 68px; font-size: 26px; }
+.cm-mic[data-state='listening'] { background: var(--cm-accent); color: var(--cm-bg); box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.16); }
+.cm-mic[data-state='thinking'] { animation: cm-pulse 1.2s ease-in-out infinite; }
+.cm-mic[data-state='speaking'] { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0.25); }
+.cm-mic[data-state='unavailable'] { opacity: 0.45; }
+@keyframes cm-pulse { 50% { transform: scale(0.92); opacity: 0.7; } }
