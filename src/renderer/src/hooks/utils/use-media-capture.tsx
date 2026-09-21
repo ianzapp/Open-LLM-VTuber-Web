@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCamera } from '@/context/camera-context';
 import { useScreenCaptureContext } from '@/context/screen-capture-context';
-import { toaster } from "@/components/ui/toaster";
+import { notify } from "@/utils/notify";
 import {
   IMAGE_COMPRESSION_QUALITY_KEY,
   DEFAULT_IMAGE_COMPRESSION_QUALITY,
@@ -89,11 +89,7 @@ export function useMediaCapture() {
       return canvas.toDataURL('image/jpeg', quality);
     } catch (error) {
       console.error(`Error capturing ${source} frame:`, error);
-      toaster.create({
-        title: `${t('error.failedCapture', { source: source })}: ${error}`,
-        type: 'error',
-        duration: 2000,
-      });
+      notify('error', `${t('error.failedCapture', { source: source })}: ${error}`);
       return null;
     }
   }, [t, getCompressionQuality, getImageMaxWidth]);

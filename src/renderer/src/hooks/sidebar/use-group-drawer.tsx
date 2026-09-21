@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWebSocket } from '@/context/websocket-context';
-import { toaster } from '@/components/ui/toaster';
+import { notify } from '@/utils/notify';
 
 export const useGroupDrawer = () => {
   const { t } = useTranslation();
@@ -18,11 +18,7 @@ export const useGroupDrawer = () => {
 
   const handleInvite = useCallback(async () => {
     if (!inviteUid.trim()) {
-      toaster.create({
-        title: t('error.enterValidUuid'),
-        type: 'error',
-        duration: 2000,
-      });
+      notify('error', t('error.enterValidUuid'));
       return;
     }
 

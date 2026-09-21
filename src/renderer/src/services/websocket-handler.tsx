@@ -14,7 +14,7 @@ import { useAudioTask } from '@/hooks/utils/use-audio-task';
 import { useBgUrl } from '@/context/bgurl-context';
 import { useConfig } from '@/context/character-config-context';
 import { useChatHistory } from '@/context/chat-history-context';
-import { toaster } from '@/components/ui/toaster';
+import { notify } from '@/utils/notify';
 import { useVAD } from '@/context/vad-context';
 import { AiState, useAiState } from "@/context/ai-state-context";
 import { useLocalStorage } from '@/hooks/utils/use-local-storage';
@@ -136,11 +136,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         setAiState('idle');
         setSubtitleText(t('notification.characterLoaded'));
 
-        toaster.create({
-          title: t('notification.characterSwitched'),
-          type: 'success',
-          duration: 2000,
-        });
+        notify('success', t('notification.characterSwitched'));
 
         // setModelInfo(undefined);
 
@@ -171,11 +167,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         if (message.messages) {
           setMessages(message.messages);
         }
-        toaster.create({
-          title: t('notification.historyLoaded'),
-          type: 'success',
-          duration: 2000,
-        });
+        notify('success', t('notification.historyLoaded'));
         break;
       case 'new-history-created':
         setAiState('idle');
@@ -190,21 +182,16 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
             timestamp: new Date().toISOString(),
           };
           setHistoryList((prev: HistoryInfo[]) => [newHistory, ...prev]);
-          toaster.create({
-            title: t('notification.newChatHistory'),
-            type: 'success',
-            duration: 2000,
-          });
+          notify('success', t('notification.newChatHistory'));
         }
         break;
       case 'history-deleted':
-        toaster.create({
-          title: message.success
+        notify(
+          message.success ? 'success' : 'error',
+          message.success
             ? t('notification.historyDeleteSuccess')
             : t('notification.historyDeleteFail'),
-          type: message.success ? 'success' : 'error',
-          duration: 2000,
-        });
+        );
         break;
       case 'history-list':
         if (message.histories) {
@@ -221,11 +208,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         }
         break;
       case 'error':
-        toaster.create({
-          title: message.message,
-          type: 'error',
-          duration: 2000,
-        });
+        notify('error', message.message);
         break;
       case 'group-update':
         console.log('Received group-update:', message.members);
@@ -237,11 +220,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         }
         break;
       case 'group-operation-result':
-        toaster.create({
-          title: message.message,
-          type: message.success ? 'success' : 'error',
-          duration: 2000,
-        });
+        notify(message.success ? 'success' : 'error', message.message);
         break;
       case 'backend-synth-complete':
         setBackendSynthComplete(true);

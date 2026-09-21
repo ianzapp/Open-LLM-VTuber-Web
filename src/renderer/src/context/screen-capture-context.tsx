@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toaster } from "@/components/ui/toaster";
+import { notify } from "@/utils/notify";
 
 interface ScreenCaptureContextType {
   stream: MediaStream | null;
@@ -55,11 +55,7 @@ export function ScreenCaptureProvider({ children }: { children: ReactNode }) {
       setError('');
     } catch (err) {
       setError(t('error.failedStartScreenCapture'));
-      toaster.create({
-        title: `${t('error.failedStartScreenCapture')}: ${err}`,
-        type: 'error',
-        duration: 2000,
-      });
+      notify('error', `${t('error.failedStartScreenCapture')}: ${err}`);
       console.error(err);
     }
   };

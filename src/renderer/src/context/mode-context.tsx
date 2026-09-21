@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { toaster } from '../components/ui/toaster';
+import { notify } from '@/utils/notify';
 
 export type ModeType = 'window' | 'pet';
 
@@ -17,12 +17,7 @@ export const ModeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setMode = (newMode: ModeType) => {
     if (newMode === 'pet' && !isElectron) {
-      toaster.create({
-        title: "Pet mode unavailable",
-        description: "Pet mode is only available in the desktop application",
-        type: "info",
-        duration: 2000,
-      });
+      notify('info', "Pet mode unavailable", "Pet mode is only available in the desktop application");
       return;
     }
 

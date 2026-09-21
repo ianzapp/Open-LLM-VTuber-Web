@@ -8,7 +8,7 @@ import { useSubtitle } from '@/context/subtitle-context';
 import { useChatHistory } from '@/context/chat-history-context';
 import { audioTaskQueue } from '@/utils/task-queue';
 import { audioManager } from '@/utils/audio-manager';
-import { toaster } from '@/components/ui/toaster';
+import { notify } from '@/utils/notify';
 import { useWebSocket } from '@/context/websocket-context';
 import { DisplayText } from '@/services/websocket-service';
 import { useLive2DExpression } from '@/hooks/canvas/use-live2d-expression';
@@ -217,11 +217,7 @@ export const useAudioTask = () => {
       }
     } catch (error) {
       console.error('Audio playback setup error:', error);
-      toaster.create({
-        title: `${t('error.audioPlayback')}: ${error}`,
-        type: "error",
-        duration: 2000,
-      });
+      notify('error', `${t('error.audioPlayback')}: ${error}`);
       resolve();
     }
   });
