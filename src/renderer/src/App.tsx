@@ -21,7 +21,7 @@ import { CompanionApp } from "./app/companion-app";
 function App(): JSX.Element {
   return (
     <ChakraProvider value={defaultSystem}>
-      {/* ModeProvider needs to wrap AppContent to provide mode to getGlobalStyles */}
+      {/* Provider shell only. The UI itself lives in ./app (CompanionApp). */}
       <ModeProvider>
         <AppWithGlobalStyles />
       </ModeProvider>

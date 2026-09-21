@@ -59,3 +59,7 @@ out
 
 # Cursor files
 .cursorrules
+
+# Playwright
+test-results/
+playwright-report/
