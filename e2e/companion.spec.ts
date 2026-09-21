@@ -105,3 +105,20 @@ test('Shift+Enter makes a new line instead of sending', async ({ page }) => {
   await expect(input).toHaveValue('line one\nline two');
   await expect(page.locator('.cm-bubble[data-role="human"]')).toHaveCount(0);
 });
+
+test('the app is installable: manifest and icons are served', async ({ page, request }) => {
+  const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+  expect(href).toBe('./manifest.webmanifest');
+  const manifestUrl = new URL(href!, page.url()).toString();
+  const res = await request.get(manifestUrl);
+  expect(res.status()).toBe(200);
+  const manifest = await res.json();
+  expect(manifest.display).toBe('standalone');
+  for (const icon of manifest.icons) {
+    const iconRes = await request.get(new URL(icon.src, manifestUrl).toString());
+    expect(iconRes.status()).toBe(200);
+    expect(iconRes.headers()['content-type']).toContain('image/png');
+  }
+  const touch = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
+  expect((await request.get(new URL(touch!, page.url()).toString())).status()).toBe(200);
+});
