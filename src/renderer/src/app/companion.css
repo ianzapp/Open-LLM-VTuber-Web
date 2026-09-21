@@ -1,0 +1,116 @@
+:root {
+  --cm-bg: #090a10;
+  --cm-text: #f5f6fa;
+  --cm-muted: rgba(245, 246, 250, 0.62);
+  --cm-glass: rgba(16, 18, 28, 0.55);
+  --cm-line: rgba(255, 255, 255, 0.14);
+  --cm-accent: #ffffff;
+  --cm-warn: #ffb547;
+  --cm-bad: #ff6b6b;
+  --cm-ok: #4ade80;
+}
+
+.cm-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--cm-bg);
+  color: var(--cm-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Layer 0: background image. Layer 1: the avatar. Nothing full-screen may sit above layer 1. */
+.cm-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.cm-canvas-host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.cm-canvas-host canvas {
+  touch-action: none; /* the avatar handles its own gestures */
+}
+
+/* Layer 2: a pass-through frame. Only .cm-island children take input. */
+.cm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.cm-island {
+  pointer-events: auto;
+}
+
+.cm-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 12px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-line);
+  background: var(--cm-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.cm-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cm-ok);
+}
+.cm-dot[data-state='connecting'] { background: var(--cm-warn); }
+.cm-dot[data-state='closed'] { background: var(--cm-bad); }
+
+.cm-toasts {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 56px);
+  left: 12px;
+  right: 12px;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.cm-toast {
+  max-width: 420px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  border: 1px solid var(--cm-line);
+  background: var(--cm-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.cm-toast[data-level='error'] { border-color: var(--cm-bad); }
+.cm-toast[data-level='warning'] { border-color: var(--cm-warn); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-root * { animation: none !important; transition: none !important; }
+}

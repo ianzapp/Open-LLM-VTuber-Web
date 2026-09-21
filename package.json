@@ -24,7 +24,8 @@
     "build:web": "vite build --config vite.config.ts --mode web",
     "extract-translations": "i18next-scanner --config i18next-scanner.config.js",
     "deploy:local": "bash scripts/deploy-local.sh",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.2.3",
@@ -55,6 +56,7 @@
     "@electron-toolkit/eslint-config-prettier": "^2.0.0",
     "@electron-toolkit/eslint-config-ts": "^2.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
+    "@playwright/test": "^1.49.1",
     "@types/node": "^20.14.8",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
