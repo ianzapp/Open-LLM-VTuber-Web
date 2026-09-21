@@ -37,3 +37,21 @@ test('the page is laid out for the device width', async ({ page }) => {
   const width = await page.evaluate(() => document.documentElement.clientWidth);
   expect(width).toBe(page.viewportSize()!.width);
 });
+
+test('a finger can drag the avatar', async ({ page, browserName }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'touch project only');
+  const pos = () => page.evaluate(() => (window as any).getLAppAdapter().getModelPosition());
+  await page.waitForFunction(() => !!(window as any).getLAppAdapter?.().getModel?.(), null, { timeout: 20_000 });
+  const size = page.viewportSize()!;
+  const cx = size.width / 2, cy = size.height * 0.55;
+  const before = await pos();
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 1 }] });
+  for (let i = 1; i <= 12; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx + i * 6, y: cy - i * 5, id: 1 }] });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const after = await pos();
+  expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y)).toBeGreaterThan(0.01);
+});

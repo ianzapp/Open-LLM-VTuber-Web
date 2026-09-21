@@ -55,10 +55,6 @@ export const Live2D = memo(
     //   };
     // }, [setExpression]);
 
-    const handlePointerDown = (e: React.PointerEvent) => {
-      handlers.onMouseDown(e);
-    };
-
     const handleContextMenu = (e: React.MouseEvent) => {
       if (!isPet) {
         return;
@@ -82,10 +78,14 @@ export const Live2D = memo(
           overflow: "hidden",
           position: "relative",
           cursor: isDragging ? "grabbing" : "default",
+          touchAction: "none",
         }}
-        onPointerDown={handlePointerDown}
+        onPointerDown={handlers.onPointerDown}
         onContextMenu={handleContextMenu}
-        {...handlers}
+        onPointerMove={handlers.onPointerMove}
+        onPointerUp={handlers.onPointerUp}
+        onPointerCancel={handlers.onPointerCancel}
+        onPointerLeave={handlers.onPointerLeave}
       >
         <canvas
           id="canvas"
@@ -96,6 +96,7 @@ export const Live2D = memo(
             pointerEvents: isPet && forceIgnoreMouse ? "none" : "auto",
             display: "block",
             cursor: isDragging ? "grabbing" : "default",
+            touchAction: "none",
           }}
         />
       </div>

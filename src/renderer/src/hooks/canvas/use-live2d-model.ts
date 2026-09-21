@@ -202,7 +202,7 @@ export const useLive2DModel = ({
     return { x, y };
   }, [getCanvasScale]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.PointerEvent) => {
     const adapter = (window as any).getLAppAdapter?.();
     if (!adapter || !canvasRef.current) return;
 
@@ -227,6 +227,7 @@ export const useLive2DModel = ({
     // --- End Check ---
 
     if (hitAreaName !== null || isHitOnModel) {
+      (e.target as Element).setPointerCapture?.(e.pointerId);
       // Record potential tap/drag start
       mouseDownTimeRef.current = Date.now();
       mouseDownPosRef.current = { x: e.clientX, y: e.clientY }; // Use clientX/Y for distance check
@@ -241,7 +242,7 @@ export const useLive2DModel = ({
     }
   }, [canvasRef, modelInfo]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.PointerEvent) => {
     const adapter = (window as any).getLAppAdapter?.();
     const view = LAppDelegate.getInstance().getView();
     const model = adapter?.getModel();
@@ -333,7 +334,8 @@ export const useLive2DModel = ({
     // --- End Pet Hover Logic ---
   }, [isPet, isDragging, electronApi, canvasRef]);
 
-  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+  const handleMouseUp = useCallback((e: React.PointerEvent) => {
+    (e.target as Element)?.releasePointerCapture?.(e.pointerId);
     const adapter = (window as any).getLAppAdapter?.();
     const model = adapter?.getModel();
     const view = LAppDelegate.getInstance().getView();
@@ -533,10 +535,11 @@ Live2DDebug.playRandomMotion("")  // Play random motion from default group
     position,
     isDragging,
     handlers: {
-      onMouseDown: handleMouseDown,
-      onMouseMove: handleMouseMove,
-      onMouseUp: handleMouseUp,
-      onMouseLeave: handleMouseLeave,
+      onPointerDown: handleMouseDown,
+      onPointerMove: handleMouseMove,
+      onPointerUp: handleMouseUp,
+      onPointerCancel: handleMouseLeave,
+      onPointerLeave: handleMouseLeave,
     },
   };
 };
