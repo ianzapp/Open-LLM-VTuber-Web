@@ -25,8 +25,11 @@ describe('notify', () => {
     expect(sink).toHaveBeenCalledWith({ level: 'error', message: '', description: undefined });
   });
 
-  it('survives a throwing sink', () => {
+  it('survives a throwing sink and logs the failure', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setNotifySink(() => { throw new Error('sink broke'); });
     expect(() => notify('info', 'x')).not.toThrow();
+    expect(spy).toHaveBeenCalledWith('notify sink failed:', expect.any(Error));
+    spy.mockRestore();
   });
 });
