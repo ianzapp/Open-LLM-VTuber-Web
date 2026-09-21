@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAiState } from '@/context/ai-state-context';
 import { useChatHistory } from '@/context/chat-history-context';
 import { useSubtitle } from '@/context/subtitle-context';
-import { stripCaptionTags } from './logic/caption-text';
+import { isFreshMessage, stripCaptionTags } from './logic/caption-text';
 
 const FADE_AFTER_MS = 3000;
 const HEARD_FOR_MS = 2500;
@@ -14,6 +14,7 @@ export function Captions(): JSX.Element {
   const [visible, setVisible] = useState(true);
   const [heard, setHeard] = useState('');
   const lastHumanId = useRef<string | number | undefined>(undefined);
+  const heardTimer = useRef<number | undefined>(undefined);
 
   const text = stripCaptionTags(subtitleText || '');
 
@@ -25,15 +26,19 @@ export function Captions(): JSX.Element {
     return () => window.clearTimeout(timer);
   }, [text, aiState]);
 
-  // Briefly show what she heard.
+  // Briefly show what she heard — only for a message created just now, never for loaded history.
   useEffect(() => {
     const last = [...messages].reverse().find((m) => m.role === 'human');
     if (!last || last.id === lastHumanId.current) return undefined;
     lastHumanId.current = last.id;
+    if (!isFreshMessage(last.timestamp, Date.now())) return undefined;
     setHeard(last.content);
-    const timer = window.setTimeout(() => setHeard(''), HEARD_FOR_MS);
-    return () => window.clearTimeout(timer);
+    window.clearTimeout(heardTimer.current);
+    heardTimer.current = window.setTimeout(() => setHeard(''), HEARD_FOR_MS);
   }, [messages]);
+
+  // The hide timer must survive later message updates; clear it only when the component unmounts.
+  useEffect(() => () => window.clearTimeout(heardTimer.current), []);
 
   return (
     <div className="cm-captions" data-testid="captions" aria-live="polite">
