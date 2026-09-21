@@ -23,7 +23,8 @@
     "dev:web": "vite serve src/renderer --config vite.config.ts",
     "build:web": "vite build --config vite.config.ts --mode web",
     "extract-translations": "i18next-scanner --config i18next-scanner.config.js",
-    "deploy:local": "bash scripts/deploy-local.sh"
+    "deploy:local": "bash scripts/deploy-local.sh",
+    "test": "vitest run"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.2.3",
@@ -68,6 +69,7 @@
     "react-dom": "^18.3.1",
     "typescript": "~5.5.2",
     "vite": "^5.3.1",
-    "vite-plugin-static-copy": "^2.3.1"
+    "vite-plugin-static-copy": "^2.3.1",
+    "vitest": "^2.1.9"
   }
 }

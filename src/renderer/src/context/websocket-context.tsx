@@ -2,9 +2,13 @@
 import React, { useContext, useCallback } from 'react';
 import { wsService } from '@/services/websocket-service';
 import { useLocalStorage } from '@/hooks/utils/use-local-storage';
+import { deriveBackendUrls, migrateStoredUrl } from '@/utils/backend-url';
 
-const DEFAULT_WS_URL = 'ws://127.0.0.1:12393/client-ws';
-const DEFAULT_BASE_URL = 'http://127.0.0.1:12393';
+const derivedUrls = deriveBackendUrls(window.location, import.meta.env.VITE_BACKEND_ORIGIN);
+migrateStoredUrl(window.localStorage, 'wsUrl', derivedUrls.wsUrl);
+migrateStoredUrl(window.localStorage, 'baseUrl', derivedUrls.baseUrl);
+const DEFAULT_WS_URL = derivedUrls.wsUrl;
+const DEFAULT_BASE_URL = derivedUrls.baseUrl;
 
 export interface HistoryInfo {
   uid: string;
