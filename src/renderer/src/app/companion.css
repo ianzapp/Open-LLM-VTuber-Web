@@ -156,3 +156,86 @@
 .cm-mic[data-state='speaking'] { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0.25); }
 .cm-mic[data-state='unavailable'] { opacity: 0.45; }
 @keyframes cm-pulse { 50% { transform: scale(0.92); opacity: 0.7; } }
+
+/* Chat mode: she keeps the top 40%; the conversation gets the rest. */
+.cm-canvas-host { transition: bottom 0.25s ease; }
+.cm-root[data-mode='chat'] .cm-canvas-host { bottom: 60%; }
+.cm-root[data-mode='chat'] .cm-overlay { justify-content: flex-start; }
+
+.cm-chat {
+  margin-top: auto;
+  height: 60%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(9, 10, 16, 0) 0, rgba(9, 10, 16, 0.92) 28px, var(--cm-bg) 100%);
+}
+.cm-thread-wrap { position: relative; flex: 1; min-height: 0; }
+.cm-thread {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cm-bubble {
+  max-width: 82%;
+  padding: 9px 13px;
+  border-radius: 18px;
+  font-size: 16px;
+  line-height: 1.38;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.cm-bubble[data-role='ai'] { align-self: flex-start; background: rgba(255, 255, 255, 0.1); border-bottom-left-radius: 6px; }
+.cm-bubble[data-role='human'] { align-self: flex-end; background: var(--cm-accent); color: var(--cm-bg); border-bottom-right-radius: 6px; }
+.cm-typing { display: inline-flex; gap: 5px; align-items: center; }
+.cm-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--cm-muted); animation: cm-blink 1.2s infinite; }
+.cm-typing i:nth-child(2) { animation-delay: 0.2s; }
+.cm-typing i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes cm-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.cm-tool, .cm-empty { align-self: center; margin: 2px 0; font-size: 12px; color: var(--cm-muted); }
+.cm-jump { position: absolute; right: 14px; bottom: 10px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--cm-line); background: var(--cm-glass); color: var(--cm-text); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+
+.cm-chatbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 6px 10px 10px;
+  padding: 7px 7px 7px 14px;
+  border-radius: 24px;
+  border: 1px solid var(--cm-line);
+  background: var(--cm-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.cm-input {
+  flex: 1;
+  min-height: 24px;
+  max-height: 132px;
+  padding: 7px 0;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--cm-text);
+  font: inherit;
+  font-size: 16px; /* below 16px iOS zooms the page on focus */
+  line-height: 1.35;
+}
+.cm-chatbar .cm-round { width: 38px; height: 38px; font-size: 16px; flex: none; }
+.cm-send { background: var(--cm-accent); color: var(--cm-bg); }
+.cm-send:disabled { opacity: 0.3; }
+.cm-mic-small[data-state='listening'] { background: var(--cm-accent); color: var(--cm-bg); }
+.cm-mic-small[data-state='unavailable'] { opacity: 0.45; }
+
+@media (min-width: 821px) {
+  /* Desktop: she keeps the left; the conversation docks right. */
+  .cm-root[data-mode='chat'] .cm-canvas-host { bottom: 0; right: 440px; }
+  .cm-root[data-mode='chat'] .cm-chat { position: absolute; top: 56px; right: 0; bottom: 0; width: 440px; height: auto; margin: 0; background: rgba(9, 10, 16, 0.88); border-left: 1px solid var(--cm-line); }
+}

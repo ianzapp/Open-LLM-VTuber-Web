@@ -55,3 +55,43 @@ test('a finger can drag the avatar', async ({ page, browserName }, testInfo) => 
   const after = await pos();
   expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y)).toBeGreaterThan(0.01);
 });
+
+test('chat mode: controls are tappable and the mode is remembered', async ({ page }) => {
+  await page.getByTestId('mode-toggle').click();
+  await expect(page.getByTestId('chat-bar')).toBeVisible();
+  const blocked = await page.evaluate(() => {
+    const out: string[] = [];
+    document.querySelectorAll<HTMLElement>('.cm-island button, .cm-island textarea, button.cm-island').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!top || !(top === el || el.contains(top) || top.contains(el))) out.push(el.getAttribute('aria-label') || el.tagName);
+    });
+    return out;
+  });
+  expect(blocked).toEqual([]);
+  await page.reload();
+  await page.waitForSelector('#canvas');
+  await expect(page.getByTestId('chat-bar')).toBeVisible();
+});
+
+test('chat mode: a typed message shows up and she answers in the thread', async ({ page }) => {
+  await page.getByTestId('mode-toggle').click();
+  const input = page.locator('.cm-input');
+  await input.fill('Say hello in five words.');
+  await input.press('Enter');
+  await expect(page.locator('.cm-bubble[data-role="human"]').last()).toHaveText('Say hello in five words.');
+  await expect(input).toHaveValue('');
+  await expect(page.locator('.cm-bubble[data-role="ai"]:not(.cm-typing)').last()).toBeVisible({ timeout: 40_000 });
+  await expect(page.locator('.cm-bubble[data-role="ai"]:not(.cm-typing)').last()).not.toContainText('[');
+});
+
+test('chat mode: Shift+Enter makes a new line instead of sending', async ({ page }) => {
+  await page.getByTestId('mode-toggle').click();
+  const input = page.locator('.cm-input');
+  await input.fill('line one');
+  await input.press('Shift+Enter');
+  await input.pressSequentially('line two');
+  await expect(input).toHaveValue('line one\nline two');
+  await expect(page.locator('.cm-bubble[data-role="human"]')).toHaveCount(0);
+});
