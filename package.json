@@ -22,7 +22,8 @@
     "build:linux": "electron-vite build && electron-builder --linux",
     "dev:web": "vite serve src/renderer --config vite.config.ts",
     "build:web": "vite build --config vite.config.ts --mode web",
-    "extract-translations": "i18next-scanner --config i18next-scanner.config.js"
+    "extract-translations": "i18next-scanner --config i18next-scanner.config.js",
+    "deploy:local": "bash scripts/deploy-local.sh"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.2.3",
