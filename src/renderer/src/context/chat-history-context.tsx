@@ -3,6 +3,7 @@ import {
   createContext, useContext, useState, useMemo, useCallback,
 } from 'react';
 import { Message } from '@/services/websocket-service';
+import { joinSentences } from '@/utils/join-sentences';
 import { HistoryInfo } from './websocket-context';
 
 /**
@@ -103,7 +104,7 @@ export function ChatHistoryProvider({ children }: { children: React.ReactNode })
         ...prevMessages.slice(0, -1),
         {
           ...lastMessage,
-          content: lastMessage.content + content,
+          content: joinSentences(lastMessage.content, content),
           timestamp: new Date().toISOString(),
         },
       ];

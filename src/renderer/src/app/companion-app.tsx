@@ -22,6 +22,7 @@ export function CompanionApp(): JSX.Element {
       <div className="cm-canvas-host" data-layer="canvas">
         <Live2D />
       </div>
+      {/* While the keyboard is up its height replaces the safe-area padding (the home indicator is covered). */}
       <div className="cm-overlay" style={{ paddingBottom: inset ? `${inset}px` : undefined }}>
         <TopStrip mode={mode} onToggleMode={() => setMode(mode === 'voice' ? 'chat' : 'voice')} />
         {mode === 'voice' ? (

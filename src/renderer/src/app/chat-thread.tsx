@@ -37,9 +37,21 @@ export function ChatThread(): JSX.Element {
 
   useEffect(() => { toBottom(); }, []);
 
+  // The box height changes (keyboard inset, rotation) fire no scroll event; keep the
+  // thread pinned to the bottom across those without touching `follow`'s own logic.
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => {
+      if (follow.current && box.current) box.current.scrollTop = box.current.scrollHeight;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="cm-thread-wrap">
-      <div className="cm-thread cm-island" ref={box} onScroll={onScroll} data-testid="chat-thread" role="log" aria-live="polite">
+      <div className="cm-thread cm-island" ref={box} onScroll={onScroll} data-testid="chat-thread" role="log" aria-live="off" aria-label="Conversation">
         {messages.length === 0 && <p className="cm-empty">Say hi — type below or tap the mic.</p>}
         {messages.map((m) => {
           if (m.type === 'tool_call_status') {
