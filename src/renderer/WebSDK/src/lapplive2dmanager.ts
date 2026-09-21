@@ -14,6 +14,7 @@ import * as LAppDefine from './lappdefine';
 import { canvas } from './lappglmanager';
 import { LAppModel } from './lappmodel';
 import { LAppPal } from './lapppal';
+import { resolveModelPath } from './lappmodelpath';
 
 export let s_instance: LAppLive2DManager | null | undefined = null;
 
@@ -189,17 +190,18 @@ export class LAppLive2DManager {
       LAppPal.printMessage(`[APP]model index: ${this._sceneIndex}`);
     }
 
-    // Use the directory name and file name from our configuration
-    const model: string = LAppDefine.ModelDir[index];
-    const modelPath: string = LAppDefine.ResourcesPath + model + '/';
-    
-    // Use ModelFileNames if available, otherwise fall back to ModelDir
-    let modelJsonName: string = LAppDefine.ModelFileNames && 
-                                LAppDefine.ModelFileNames[index] ? 
-                                LAppDefine.ModelFileNames[index] : 
-                                LAppDefine.ModelDir[index];
-                                
-    modelJsonName += '.model3.json';
+    const resolved = resolveModelPath(
+      LAppDefine.ResourcesPath,
+      LAppDefine.ModelDir,
+      LAppDefine.ModelFileNames,
+      index,
+    );
+    if (!resolved) {
+      console.warn('Live2D scene load skipped until model config is available.');
+      return;
+    }
+    const modelPath = resolved.dir;
+    const modelJsonName = resolved.fileName;
 
     if (LAppDefine.DebugLogEnable) {
       LAppPal.printMessage(`[APP]model path: ${modelPath}${modelJsonName}`);
