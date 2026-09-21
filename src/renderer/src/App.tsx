@@ -17,6 +17,7 @@ import { CharacterConfigProvider } from "./context/character-config-context";
 import { Toaster } from "./components/ui/toaster";
 import { VADProvider } from "./context/vad-context";
 import { Live2D } from "./components/canvas/live2d";
+import { EngineEffects } from "./engine/engine-effects";
 import TitleBar from "./components/electron/title-bar";
 import { InputSubtitle } from "./components/electron/input-subtitle";
 import { ProactiveSpeakProvider } from "./context/proactive-speak-context";
@@ -183,6 +184,7 @@ function AppWithGlobalStyles(): JSX.Element {
                           <GroupProvider>
                             <BrowserProvider>
                               <WebSocketHandler>
+                                <EngineEffects />
                                 <Toaster />
                                 <AppContent />
                               </WebSocketHandler>
