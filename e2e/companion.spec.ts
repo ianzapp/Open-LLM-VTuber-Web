@@ -164,7 +164,7 @@ test.describe('companion', () => {
 
     // Restore the original mood so the fixture is left as it was found.
     await moodButton.click();
-    const originalItem = page.locator('[role="menuitemradio"]', { hasText: originalLabel }).first();
+    const originalItem = page.getByRole('menuitemradio', { name: originalLabel, exact: true });
     await originalItem.click();
     await expect(async () => {
       const text = clean(await moodButton.textContent());
@@ -234,16 +234,6 @@ test.describe('gallery', () => {
     await expect(page.getByTestId('settings-sheet')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('settings-sheet')).toHaveCount(0);
-  });
-
-  test('an invalid server address shows an inline error and leaves storage untouched', async ({ page }) => {
-    const before = await page.evaluate(() => window.localStorage.getItem('baseUrl'));
-    await page.getByTestId('settings-button').click();
-    await page.getByTestId('settings-address-input').fill('notaurl');
-    await page.getByTestId('settings-address-save').click();
-    await expect(page.getByTestId('settings-address-error')).toBeVisible();
-    const after = await page.evaluate(() => window.localStorage.getItem('baseUrl'));
-    expect(after).toBe(before);
   });
 
   test('every settings control receives its own tap', async ({ page }) => {

@@ -1,34 +1,4 @@
-/** Pure helpers for the gallery settings sheet: server address and VAD sensitivity. */
-
-export interface DerivedUrls {
-  baseUrl: string;
-  wsUrl: string;
-}
-
-/**
- * Accepts a base server address (`http(s)://host[:port]`, with an optional
- * trailing slash or path) and derives the paired base + WebSocket URLs.
- * Returns null for anything that is not a valid http(s) origin.
- */
-export function deriveFromBase(base: string): DerivedUrls | null {
-  const trimmed = base.trim();
-  if (!trimmed) return null;
-
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    return null;
-  }
-
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-  if (!url.host) return null;
-
-  const baseUrl = `${url.protocol}//${url.host}`;
-  const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${wsProtocol}//${url.host}/client-ws`;
-  return { baseUrl, wsUrl };
-}
+/** Pure helpers for the gallery settings sheet: VAD sensitivity. */
 
 /** Five-step sensitivity scale: 1 = most sensitive (needs the least clarity), 5 = least. */
 const SENSITIVITY_THRESHOLDS: Record<1 | 2 | 3 | 4 | 5, number> = {

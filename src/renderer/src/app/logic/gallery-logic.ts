@@ -28,21 +28,10 @@ export function groupAvatars(chars: readonly ApiCharacter[]): AvatarGroup[] {
     const moods = list.map((c): Mood => ({ filename: c.filename, confUid: c.conf_uid, label: c.mood_label || 'Default', lastTalked: toTime(c.last_talked) }));
     moods.sort((a, b) => Number(b.label === 'Default') - Number(a.label === 'Default')); // stable: API order otherwise
 
-    // Determine avatar name: first mood with Default label (if non-empty), then shortest non-empty character_name, else title-cased model
-    const defaultMood = moods.find((m) => m.label === 'Default');
-    const defaultCharName = defaultMood ? list.find((c) => c.mood_label === 'Default' || (c.mood_label || 'Default') === 'Default')?.character_name : null;
-    let name: string;
-    if (defaultCharName) {
-      name = defaultCharName;
-    } else {
-      const nonEmpty = list.map((c) => c.character_name).filter((cn): cn is string => !!cn);
-      if (nonEmpty.length > 0) {
-        nonEmpty.sort((a, b) => a.length - b.length || nonEmpty.indexOf(a) - nonEmpty.indexOf(b));
-        name = nonEmpty[0];
-      } else {
-        name = titleCase(model);
-      }
-    }
+    // Determine avatar name: the character_name for the Default mood, else the
+    // shortest non-empty character_name, else title-cased model.
+    const named = list.filter((c) => c.character_name);
+    const name = (named.find((c) => (c.mood_label || 'Default') === 'Default') ?? [...named].sort((a, b) => a.character_name.length - b.character_name.length)[0])?.character_name ?? titleCase(model);
 
     const times = moods.map((m) => m.lastTalked).filter((t): t is number => t !== null);
     const withPicture = list.find((c) => c.snapshot) ?? list.find((c) => c.avatar);

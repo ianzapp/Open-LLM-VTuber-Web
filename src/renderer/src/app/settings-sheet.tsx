@@ -4,7 +4,6 @@ import { useWebSocket } from '@/context/websocket-context';
 import { useVAD } from '@/context/vad-context';
 import { deriveBackendUrls } from '@/utils/backend-url';
 import {
-  deriveFromBase,
   negativeThresholdFor,
   sensitivityToThreshold,
   thresholdToSensitivity,
@@ -50,12 +49,10 @@ export function SettingsButton({ onClick }: { onClick: () => void }): JSX.Elemen
 }
 
 export function SettingsSheet({ onClose }: { onClose: () => void }): JSX.Element {
-  const { baseUrl, setBaseUrl, setWsUrl } = useWebSocket();
+  const { setBaseUrl, setWsUrl } = useWebSocket();
   const { settings, updateSettings } = useVAD();
 
-  const [addressInput, setAddressInput] = useState(baseUrl);
-  const [addressError, setAddressError] = useState(false);
-  const [language, setLanguage] = useState(i18n.language);
+  const [language, setLanguage] = useState((i18n.resolvedLanguage ?? i18n.language ?? 'en').split('-')[0]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -65,24 +62,10 @@ export function SettingsSheet({ onClose }: { onClose: () => void }): JSX.Element
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  const handleSaveAddress = (): void => {
-    const derived = deriveFromBase(addressInput);
-    if (!derived) {
-      setAddressError(true);
-      return;
-    }
-    setAddressError(false);
-    setBaseUrl(derived.baseUrl);
-    setWsUrl(derived.wsUrl);
-    setAddressInput(derived.baseUrl);
-  };
-
   const handleUseThisSite = (): void => {
     const derived = deriveBackendUrls(window.location);
-    setAddressError(false);
     setBaseUrl(derived.baseUrl);
     setWsUrl(derived.wsUrl);
-    setAddressInput(derived.baseUrl);
   };
 
   const sensitivity = thresholdToSensitivity(settings.positiveSpeechThreshold);
@@ -115,31 +98,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }): JSX.Element
       <div className="cm-settings-body">
         <div className="cm-settings-group">
           <div className="cm-settings-label">Server address</div>
-          <input
-            type="text"
-            className="cm-settings-input"
-            data-testid="settings-address-input"
-            inputMode="url"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            value={addressInput}
-            onChange={(e) => { setAddressInput(e.target.value); setAddressError(false); }}
-          />
-          {addressError && (
-            <div className="cm-settings-error" data-testid="settings-address-error">
-              Enter an address like https://example.com
-            </div>
-          )}
+          <div>The app talks to the server that served it.</div>
           <div className="cm-settings-row">
-            <button
-              type="button"
-              className="cm-pill cm-settings-save"
-              data-testid="settings-address-save"
-              onClick={handleSaveAddress}
-            >
-              Save
-            </button>
             <button
               type="button"
               className="cm-pill cm-settings-use-site"

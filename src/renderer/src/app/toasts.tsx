@@ -9,6 +9,7 @@ export function Toasts(): JSX.Element {
   useEffect(() => {
     let next = 1;
     setNotifySink((notice) => {
+      if (notice.level === 'success') return; // fires on every card tap / reconnect
       const id = next++;
       setItems((cur) => [...cur.slice(-2), { ...notice, id }]);
       window.setTimeout(() => setItems((cur) => cur.filter((t) => t.id !== id)), 2500);

@@ -10,11 +10,18 @@ export function useCharacters(): { groups: AvatarGroup[]; state: 'loading' | 're
 
   useEffect(() => {
     const ctl = new AbortController();
-    setState('loading');
+    // A silent background refresh (returning to the gallery) keeps the old list
+    // on screen instead of flashing the loading/error state.
+    if (groups.length === 0) setState('loading');
     fetch(`${baseUrl}/api/companion/characters`, { signal: ctl.signal })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((body: { characters?: ApiCharacter[] }) => { setGroups(groupAvatars(body.characters ?? [])); setState('ready'); })
-      .catch((err) => { if (err?.name !== 'AbortError') { console.error('characters:', err); setState('error'); } });
+      .catch((err) => {
+        if (err?.name !== 'AbortError') {
+          console.error('characters:', err);
+          if (groups.length === 0) setState('error');
+        }
+      });
     return () => ctl.abort();
   }, [baseUrl, attempt]);
 

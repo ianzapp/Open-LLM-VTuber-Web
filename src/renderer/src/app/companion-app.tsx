@@ -3,6 +3,7 @@ import './companion.css';
 import { Live2D } from '@/engine/live2d-canvas';
 import { useBgUrl } from '@/context/bgurl-context';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
+import { useProactiveSpeak } from '@/context/proactive-speak-context';
 import { useVAD } from '@/context/vad-context';
 import { notify } from '@/utils/notify';
 import { ChatBar } from './chat-bar';
@@ -24,6 +25,7 @@ export function CompanionApp(): JSX.Element {
   const { groups, state, reload } = useCharacters();
   const { interrupt } = useInterrupt();
   const { stopMic } = useVAD();
+  const { settings: proactiveSpeakSettings, updateSettings: updateProactiveSpeakSettings } = useProactiveSpeak();
 
   // interrupt/stopMic may not be referentially stable across renders; keep the
   // latest callbacks in refs so this effect only fires when the screen changes.
@@ -40,12 +42,23 @@ export function CompanionApp(): JSX.Element {
     }
   }, [route.screen]);
 
+  // Returning to the gallery refreshes the list (silently — see use-characters).
+  useEffect(() => { if (route.screen === 'gallery') reload(); }, [route.screen, reload]);
+
+  // The old UI could turn this on; the new UI has no control for it and she must not start talking under the gallery.
+  useEffect(() => {
+    if (proactiveSpeakSettings.allowProactiveSpeak) {
+      updateProactiveSpeakSettings({ ...proactiveSpeakSettings, allowProactiveSpeak: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const group = groups.find((g) => route.screen === 'companion' && g.model === route.model);
   const { current, selectMood } = useActiveCharacter(group);
 
   useEffect(() => {
-    if (route.screen === 'companion' && state === 'ready' && !group) {
-      notify('warning', 'That avatar is not available');
+    if (route.screen === 'companion' && (state === 'ready' || state === 'error') && !group) {
+      notify('warning', state === 'error' ? "Can't reach the server" : 'That avatar is not available');
       window.location.hash = '#/';
     }
   }, [route, state, group]);

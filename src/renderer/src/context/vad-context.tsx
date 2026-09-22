@@ -121,6 +121,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     'vadSettings',
     DEFAULT_VAD_SETTINGS,
   );
+  const settingsRef = useRef(settings);
   const [autoStartMicOn, setAutoStartMicOnState] = useLocalStorage(
     'autoStartMicOn',
     DEFAULT_VAD_STATE.autoStartMicOn,
@@ -170,6 +171,10 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setAiStateRef.current = setAiState;
   }, [setAiState]);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
     autoStopMicRef.current = autoStopMic;
@@ -264,6 +269,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
    * Update VAD settings and restart if active
    */
   const updateSettings = useCallback((newSettings: VADSettings) => {
+    settingsRef.current = newSettings;
     setSettings(newSettings);
     if (vadRef.current) {
       stopMic();
@@ -280,9 +286,9 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     const newVAD = await MicVAD.new({
       model: "v5",
       preSpeechPadFrames: 20,
-      positiveSpeechThreshold: settings.positiveSpeechThreshold / 100,
-      negativeSpeechThreshold: settings.negativeSpeechThreshold / 100,
-      redemptionFrames: settings.redemptionFrames,
+      positiveSpeechThreshold: settingsRef.current.positiveSpeechThreshold / 100,
+      negativeSpeechThreshold: settingsRef.current.negativeSpeechThreshold / 100,
+      redemptionFrames: settingsRef.current.redemptionFrames,
       baseAssetPath: './libs/',
       onnxWASMBasePath: './libs/',
       onSpeechStart: handleSpeechStart,

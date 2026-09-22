@@ -13,17 +13,23 @@ export function useActiveCharacter(group: AvatarGroup | undefined): { current: M
   const { switchCharacter } = useSwitchCharacter();
   // filename asked of the server for this group on this connection; null = nothing asked yet
   const requested = useRef<string | null>(null);
+  // `${filename}|${confUid}` of the last switchCharacter request actually sent to the
+  // server, so a quick A→B→A tap sequence re-sends A once B has landed instead of
+  // being swallowed by the "ask once per target" guard below.
+  const lastSent = useRef<string | null>(null);
   const entryKey = useRef<string | null>(null); // `${group.model}` — a new group starts a new entry
   const current = group?.moods.find((m) => m.confUid === confUid);
 
   useEffect(() => {
     if (!group || wsState !== 'OPEN' || !confUid) return undefined;
-    if (entryKey.current !== group.model) { entryKey.current = group.model; requested.current = null; }
+    if (entryKey.current !== group.model) { entryKey.current = group.model; requested.current = null; lastSent.current = null; }
     const target = requested.current
       ? group.moods.find((m) => m.filename === requested.current) ?? pickMood(group, loadLastMood(window.localStorage, group.model))
       : pickMood(group, loadLastMood(window.localStorage, group.model));
     if (current && current.filename === target.filename) return undefined;      // she is who we want
-    if (requested.current !== target.filename) {                                // ask once per target
+    const sentKey = `${target.filename}|${confUid}`;
+    if (lastSent.current !== sentKey) {                                        // ask once per (target, server state)
+      lastSent.current = sentKey;
       requested.current = target.filename;
       switchCharacter(target.filename);
     }
@@ -32,7 +38,7 @@ export function useActiveCharacter(group: AvatarGroup | undefined): { current: M
     return () => window.clearTimeout(timer);
   }, [group, wsState, confUid, current, switchCharacter]);
 
-  useEffect(() => { if (wsState !== 'OPEN') requested.current = null; }, [wsState]);
+  useEffect(() => { if (wsState !== 'OPEN') { requested.current = null; lastSent.current = null; } }, [wsState]);
 
   // Remember only a mood that was asked for (by the entry logic or the user) and has actually loaded.
   useEffect(() => {
@@ -43,7 +49,10 @@ export function useActiveCharacter(group: AvatarGroup | undefined): { current: M
     if (!group) return;
     saveLastMood(window.localStorage, group.model, mood.filename);
     requested.current = mood.filename;
-    if (mood.confUid !== confUid) switchCharacter(mood.filename);
+    if (mood.confUid !== confUid) {
+      switchCharacter(mood.filename);
+      lastSent.current = `${mood.filename}|${confUid}`;
+    }
   }, [group, confUid, switchCharacter]);
 
   return { current, selectMood };
