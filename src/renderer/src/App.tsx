@@ -46,12 +46,13 @@ function AppWithGlobalStyles(): JSX.Element {
                         <BgUrlProvider>
                           <GroupProvider>
                             <BrowserProvider>
-                              <WebSocketHandler>
-                                <EngineEffects />
-                                <LookProvider>
+                              {/* LookProvider sits above WebSocketHandler: the audio task inside it uses useLook(). */}
+                              <LookProvider>
+                                <WebSocketHandler>
+                                  <EngineEffects />
                                   <CompanionApp />
-                                </LookProvider>
-                              </WebSocketHandler>
+                                </WebSocketHandler>
+                              </LookProvider>
                             </BrowserProvider>
                           </GroupProvider>
                         </BgUrlProvider>
