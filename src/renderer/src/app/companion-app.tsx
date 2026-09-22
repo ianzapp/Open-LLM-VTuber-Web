@@ -11,6 +11,7 @@ import { Gallery } from './gallery';
 import { ThreadSheet } from './thread-sheet';
 import { Toasts } from './toasts';
 import { TopStrip } from './top-strip';
+import { useActiveCharacter } from './use-active-character';
 import { useCharacters } from './use-characters';
 import { useHashRoute } from './use-hash-route';
 import { useKeyboardInset } from './use-keyboard-inset';
@@ -40,6 +41,7 @@ export function CompanionApp(): JSX.Element {
   }, [route.screen]);
 
   const group = groups.find((g) => route.screen === 'companion' && g.model === route.model);
+  const { current, selectMood } = useActiveCharacter(group);
 
   useEffect(() => {
     if (route.screen === 'companion' && state === 'ready' && !group) {
@@ -57,9 +59,15 @@ export function CompanionApp(): JSX.Element {
       {route.screen === 'companion' ? (
         // While the keyboard is up its height replaces the safe-area padding (the home indicator is covered).
         <div className="cm-overlay" style={{ paddingBottom: inset ? `${inset}px` : undefined }}>
-          <TopStrip />
+          <TopStrip group={group} current={current} onSelectMood={selectMood} />
           <div className="cm-stage">
-            {threadOpen ? <ThreadSheet onClose={() => setThreadOpen(false)} /> : <FloatingBubbles />}
+            {group && !current ? (
+              <div className="cm-loading">{`Loading ${group.name}…`}</div>
+            ) : threadOpen ? (
+              <ThreadSheet onClose={() => setThreadOpen(false)} />
+            ) : (
+              <FloatingBubbles />
+            )}
           </div>
           <ChatBar threadOpen={threadOpen} onToggleThread={() => setThreadOpen((v) => !v)} />
         </div>

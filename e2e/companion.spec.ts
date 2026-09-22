@@ -110,6 +110,66 @@ test.describe('companion', () => {
     await expect(page.locator('.cm-bubble[data-role="human"]')).toHaveCount(0);
   });
 
+  test('the top strip shows her name, not the config id', async ({ page }) => {
+    const text = await page.getByTestId('top-strip').locator('.cm-pill').nth(1).textContent();
+    expect(text).not.toContain('_');
+  });
+
+  test('changing mood asks the server and sticks', async ({ page }) => {
+    const moodButton = page.getByTestId('mood-button');
+    if ((await moodButton.count()) === 0) test.skip(true, 'this avatar has a single mood');
+
+    const model = decodeURIComponent(new URL(page.url()).hash.replace(/^#\/c\//, ''));
+    const originalLabel = (await moodButton.textContent())?.trim();
+
+    await moodButton.click();
+    const items = page.locator('[role="menuitemradio"]');
+    await expect(items.first()).toBeVisible();
+
+    // Hit-test every menu item while the menu is open.
+    const blocked = await page.evaluate(() => {
+      const out: string[] = [];
+      document.querySelectorAll<HTMLElement>('[role="menuitemradio"]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!top || !(top === el || el.contains(top) || top.contains(el))) {
+          out.push(el.textContent || '');
+        }
+      });
+      return out;
+    });
+    expect(blocked).toEqual([]);
+
+    const count = await items.count();
+    let chosenLabel: string | null = null;
+    for (let i = 0; i < count; i++) {
+      const checked = await items.nth(i).getAttribute('aria-checked');
+      if (checked !== 'true') {
+        chosenLabel = (await items.nth(i).textContent())?.trim() ?? null;
+        await items.nth(i).click();
+        break;
+      }
+    }
+    expect(chosenLabel).toBeTruthy();
+
+    await expect(async () => {
+      const text = (await moodButton.textContent())?.trim();
+      expect(text).toContain(chosenLabel!.replace('✓', '').trim());
+    }).toPass({ timeout: 30_000 });
+
+    const stored = await page.evaluate((m) => window.localStorage.getItem(`companion.mood.${m}`), model);
+    expect(stored).toBeTruthy();
+
+    // Restore the original mood so the fixture is left as it was found.
+    await moodButton.click();
+    const originalItem = page.locator('[role="menuitemradio"]', { hasText: originalLabel ?? '' }).first();
+    await originalItem.click();
+    await expect(async () => {
+      const text = (await moodButton.textContent())?.trim();
+      expect(text).toBe(originalLabel);
+    }).toPass({ timeout: 30_000 });
+  });
+
   test('the app is installable: manifest and icons are served', async ({ page, request }) => {
     const href = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(href).toBe('./manifest.webmanifest');

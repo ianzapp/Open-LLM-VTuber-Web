@@ -66,6 +66,86 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; backgrou
   font-weight: 600;
 }
 
+.cm-back {
+  flex: none;
+  padding: 6px 13px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.cm-name-pill {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cm-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-mood-wrap {
+  position: relative;
+  flex: none;
+}
+
+.cm-mood-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--cm-line);
+  background: var(--cm-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.cm-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--cm-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+
+.cm-menu-item:active { background: rgba(255, 255, 255, 0.08); }
+
+.cm-menu-check {
+  width: 14px;
+  flex: none;
+  color: var(--cm-accent);
+}
+
+.cm-loading {
+  align-self: center;
+  margin-bottom: 24px;
+  padding: 8px 16px;
+  color: var(--cm-muted);
+  font-size: 14px;
+}
+
 .cm-pill {
   display: inline-flex;
   align-items: center;
