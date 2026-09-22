@@ -1,7 +1,4 @@
 import { useEffect } from 'react';
-import { useAiState, AiStateEnum } from '@/context/ai-state-context';
-import { useLive2DConfig } from '@/context/live2d-config-context';
-import { useLive2DExpression } from '@/hooks/canvas/use-live2d-expression';
 import { useAutoReconnect } from '@/hooks/utils/use-auto-reconnect';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useIpcHandlers } from '@/hooks/utils/use-ipc-handlers';
@@ -14,19 +11,12 @@ import { audioManager } from '@/utils/audio-manager';
  * second mount makes `frontend-playback-complete` fire twice.
  */
 export function EngineEffects(): null {
-  const { aiState } = useAiState();
-  const { modelInfo } = useLive2DConfig();
-  const { resetExpression } = useLive2DExpression();
-
   useIpcHandlers();
   useInterrupt();
   useAutoReconnect(window.api === undefined);
 
-  useEffect(() => {
-    if (aiState !== AiStateEnum.IDLE) return;
-    const adapter = (window as any).getLAppAdapter?.();
-    if (adapter) resetExpression(adapter, modelInfo);
-  }, [aiState, modelInfo, resetExpression]);
+  // No "reset to expression 0 on idle" here any more: the look context owns her face.
+  // (Expression 0 is an arbitrary file — on Beach it is the colour preset.)
 
   // iOS: sound needs one user gesture. Any tap or key press unlocks the shared player.
   useEffect(() => {
