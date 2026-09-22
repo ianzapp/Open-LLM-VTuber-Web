@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWebSocket } from '@/context/websocket-context';
 import { routeFor, talkedLine, type AvatarGroup } from './logic/gallery-logic';
+import { SettingsButton, SettingsSheet } from './settings-sheet';
 
 interface GalleryProps {
   groups: AvatarGroup[];
@@ -45,12 +46,16 @@ function SkeletonCard(): JSX.Element {
 }
 
 export function Gallery({ groups, state, onRetry }: GalleryProps): JSX.Element {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <main className="cm-gallery cm-island" data-testid="gallery">
       <div className="cm-gallery-head">
         <div className="cm-gallery-title">Companion</div>
-        <div className="cm-gallery-actions" />
+        <div className="cm-gallery-actions">
+          <SettingsButton onClick={() => setSettingsOpen(true)} />
+        </div>
       </div>
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
       {state === 'loading' && (
         <div className="cm-cards">
           {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}

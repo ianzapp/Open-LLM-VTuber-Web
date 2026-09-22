@@ -223,4 +223,45 @@ test.describe('gallery', () => {
     await page.goto('./#/c/does-not-exist');
     await expect(page.getByTestId('gallery')).toBeVisible();
   });
+
+  test('settings opens and closes', async ({ page }) => {
+    await page.getByTestId('settings-button').click();
+    await expect(page.getByTestId('settings-sheet')).toBeVisible();
+    await page.getByLabel('Close settings').click();
+    await expect(page.getByTestId('settings-sheet')).toHaveCount(0);
+
+    await page.getByTestId('settings-button').click();
+    await expect(page.getByTestId('settings-sheet')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('settings-sheet')).toHaveCount(0);
+  });
+
+  test('an invalid server address shows an inline error and leaves storage untouched', async ({ page }) => {
+    const before = await page.evaluate(() => window.localStorage.getItem('baseUrl'));
+    await page.getByTestId('settings-button').click();
+    await page.getByTestId('settings-address-input').fill('notaurl');
+    await page.getByTestId('settings-address-save').click();
+    await expect(page.getByTestId('settings-address-error')).toBeVisible();
+    const after = await page.evaluate(() => window.localStorage.getItem('baseUrl'));
+    expect(after).toBe(before);
+  });
+
+  test('every settings control receives its own tap', async ({ page }) => {
+    await page.getByTestId('settings-button').click();
+    await expect(page.getByTestId('settings-sheet')).toBeVisible();
+    const blocked = await page.evaluate(() => {
+      const out: string[] = [];
+      document.querySelectorAll<HTMLElement>('[data-testid="settings-sheet"] button, [data-testid="settings-sheet"] input, [data-testid="settings-sheet"] select').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!top || !(top === el || el.contains(top) || top.contains(el))) {
+          out.push(`${el.tagName}.${el.className} <- ${top ? top.tagName + '#' + top.id : 'null'}`);
+        }
+      });
+      return out;
+    });
+    expect(await page.locator('[data-testid="settings-sheet"] button, [data-testid="settings-sheet"] input, [data-testid="settings-sheet"] select').count()).toBeGreaterThan(3);
+    expect(blocked).toEqual([]);
+  });
 });
