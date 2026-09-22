@@ -11,14 +11,25 @@ interface MoodMenuProps {
 export function MoodMenu({ group, current, onSelectMood }: MoodMenuProps): JSX.Element | null {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return undefined;
     const onPointerDown = (e: PointerEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
     window.addEventListener('pointerdown', onPointerDown);
-    return () => window.removeEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [open]);
 
   if (!group || group.moods.length <= 1) return null;
@@ -26,6 +37,7 @@ export function MoodMenu({ group, current, onSelectMood }: MoodMenuProps): JSX.E
   return (
     <div className="cm-mood-wrap" ref={rootRef}>
       <button
+        ref={buttonRef}
         type="button"
         className="cm-pill cm-island"
         data-testid="mood-button"
@@ -40,7 +52,6 @@ export function MoodMenu({ group, current, onSelectMood }: MoodMenuProps): JSX.E
         <div
           className="cm-menu cm-island"
           role="menu"
-          onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
         >
           {group.moods.map((m) => {
             const checked = m.filename === current?.filename;

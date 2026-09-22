@@ -11,48 +11,39 @@ export function useActiveCharacter(group: AvatarGroup | undefined): { current: M
   const { confUid } = useConfig();
   const { wsState } = useWebSocket();
   const { switchCharacter } = useSwitchCharacter();
+  // filename asked of the server for this group on this connection; null = nothing asked yet
   const requested = useRef<string | null>(null);
+  const entryKey = useRef<string | null>(null); // `${group.model}` — a new group starts a new entry
   const current = group?.moods.find((m) => m.confUid === confUid);
 
-  // Ask the server for this avatar whenever it is showing someone else (first entry, reconnect).
   useEffect(() => {
     if (!group || wsState !== 'OPEN' || !confUid) return undefined;
-    if (current) { requested.current = null; return undefined; }
-    const target = pickMood(group, loadLastMood(window.localStorage, group.model));
-    let asked = false;
-    if (requested.current !== target.filename) {
+    if (entryKey.current !== group.model) { entryKey.current = group.model; requested.current = null; }
+    const target = requested.current
+      ? group.moods.find((m) => m.filename === requested.current) ?? pickMood(group, loadLastMood(window.localStorage, group.model))
+      : pickMood(group, loadLastMood(window.localStorage, group.model));
+    if (current && current.filename === target.filename) return undefined;      // she is who we want
+    if (requested.current !== target.filename) {                                // ask once per target
       requested.current = target.filename;
       switchCharacter(target.filename);
-      asked = true;
     }
-    // switchCharacter no-ops when the target filename already matches the CURRENT config's
-    // filename (see use-switch-character.tsx) even though confUid may still not match this
-    // group (e.g. two files sharing a name). Only arm the give-up timer when we actually asked
-    // for a switch this run, or a prior run already did (requested.current set) — otherwise
-    // there is nothing in flight to time out.
-    if (!asked && !requested.current) return undefined;
-    console.debug('[companion] waiting for the server to load', target.filename, 'asked this run:', asked);
-    const timer = window.setTimeout(() => {
-      notify('error', `Could not load ${group.name}`);
-      window.location.hash = '#/';
-    }, GIVE_UP_MS);
+    if (current) return undefined;  // a different mood of the same avatar is showing: no give-up, she is usable meanwhile
+    const timer = window.setTimeout(() => { notify('error', `Could not load ${group.name}`); window.location.hash = '#/'; }, GIVE_UP_MS);
     return () => window.clearTimeout(timer);
   }, [group, wsState, confUid, current, switchCharacter]);
 
-  // A new connection starts on the server default again: forget what was asked of the old one.
   useEffect(() => { if (wsState !== 'OPEN') requested.current = null; }, [wsState]);
 
-  // Save the mood that actually loaded, so re-entering this avatar returns to it.
+  // Remember only a mood that was asked for (by the entry logic or the user) and has actually loaded.
   useEffect(() => {
-    if (group && current) saveLastMood(window.localStorage, group.model, current.filename);
+    if (group && current && requested.current === current.filename) saveLastMood(window.localStorage, group.model, current.filename);
   }, [group, current]);
 
   const selectMood = useCallback((mood: Mood) => {
     if (!group) return;
     saveLastMood(window.localStorage, group.model, mood.filename);
-    if (mood.confUid === confUid) return;
     requested.current = mood.filename;
-    switchCharacter(mood.filename);
+    if (mood.confUid !== confUid) switchCharacter(mood.filename);
   }, [group, confUid, switchCharacter]);
 
   return { current, selectMood };
