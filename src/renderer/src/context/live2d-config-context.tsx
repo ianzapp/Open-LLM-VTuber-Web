@@ -29,6 +29,30 @@ export interface TapMotionMap {
 }
 
 /**
+ * One thing she can wear or show: a named expression (`expr`) or a raw parameter map
+ * (`params`). `inverted` entries apply their parameters when the look is OFF (Beach's
+ * tails are drawn by default and the `Y` expression removes them). `default` marks what
+ * is on when the model loads.
+ */
+export interface LookEntry {
+  id: string;
+  label: string;
+  expr?: string;
+  params?: Record<string, number>;
+  inverted?: boolean;
+  default?: boolean;
+}
+
+/** Per-model catalogue, delivered by the server inside `model_info.looks`. */
+export interface LooksCatalogue {
+  poses?: LookEntry[];
+  hands?: LookEntry[];
+  accessories?: LookEntry[];
+  colours?: LookEntry[];
+  effects?: LookEntry[];
+}
+
+/**
  * Live2D model information interface
  * @interface ModelInfo
  */
@@ -65,6 +89,9 @@ export interface ModelInfo {
 
   /** Tap motion mapping configuration */
   tapMotions?: TapMotionMap;
+
+  /** What this model can wear or show (poses, hands, accessories, colours, effects) */
+  looks?: LooksCatalogue;
 
   /** Enable scroll to resize */
   scrollToResize?: boolean;

@@ -77,6 +77,10 @@ export class LAppAdapter {
     this.getModel()?.setExpression(name);
   }
 
+  public setComposedExpression(params: Record<string, number>): void {
+    this.getModel()?.setComposedExpression(params);
+  }
+
   // @deprecated
   public nextChara(): void {
     this.getMgr().nextScene();

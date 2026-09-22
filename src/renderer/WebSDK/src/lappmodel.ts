@@ -808,6 +808,64 @@ export class LAppModel extends CubismUserModel {
   }
 
   /**
+   * Play one synthetic expression built from a parameter map.
+   *
+   * Cubism's expression manager plays a single expression motion at a time, so the
+   * app merges every active look (pose, hands, accessories, colour, effects) and the
+   * current facial emotion into one map and hands it over here. An empty map clears.
+   *
+   * @param params parameter id -> value
+   */
+  public setComposedExpression(params: Record<string, number>): void {
+    if (this._expressionManager == null) {
+      return;
+    }
+
+    const ids = Object.keys(params ?? {});
+    if (ids.length === 0) {
+      this._expressionManager.stopAllMotions();
+      return;
+    }
+
+    const json = JSON.stringify({
+      Type: 'Live2D Expression',
+      FadeInTime: 0.2,
+      FadeOutTime: 0.2,
+      Parameters: ids.map((id) => ({ Id: id, Value: params[id], Blend: 'Add' })),
+    });
+    const bytes = new TextEncoder().encode(json);
+    const buffer: ArrayBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    );
+
+    // Replace the previous synthetic expression the same way the loader replaces a
+    // reloaded one: stop it first, then free it, then install and start the new one.
+    this._expressionManager.stopAllMotions();
+    const previous: ACubismMotion = this._expressions.getValue(
+      LAppModel.COMPOSED_EXPRESSION_ID
+    );
+    if (previous != null) {
+      ACubismMotion.delete(previous);
+      this._expressions.setValue(LAppModel.COMPOSED_EXPRESSION_ID, null);
+    }
+
+    const motion: ACubismMotion = this.loadExpression(
+      buffer,
+      buffer.byteLength,
+      LAppModel.COMPOSED_EXPRESSION_ID
+    );
+    this._expressions.setValue(LAppModel.COMPOSED_EXPRESSION_ID, motion);
+    this._expressionManager.startMotionPriority(
+      motion,
+      false,
+      LAppDefine.PriorityForce
+    );
+  }
+
+  public static readonly COMPOSED_EXPRESSION_ID = '__composed';
+
+  /**
    * ランダムに選ばれた表情モーションをセットする
    */
   public setRandomExpression(): void {
