@@ -40,8 +40,8 @@ function AvatarCard({ group }: { group: AvatarGroup }): JSX.Element {
   );
 }
 
-function SkeletonCard({ index }: { index: number }): JSX.Element {
-  return <div className="cm-card cm-card-skeleton" data-testid="gallery-skeleton" key={index} />;
+function SkeletonCard(): JSX.Element {
+  return <div className="cm-card cm-card-skeleton" data-testid="gallery-skeleton" />;
 }
 
 export function Gallery({ groups, state, onRetry }: GalleryProps): JSX.Element {
@@ -53,7 +53,7 @@ export function Gallery({ groups, state, onRetry }: GalleryProps): JSX.Element {
       </div>
       {state === 'loading' && (
         <div className="cm-cards">
-          {[0, 1, 2].map((i) => <SkeletonCard index={i} key={i} />)}
+          {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
         </div>
       )}
       {state === 'error' && (

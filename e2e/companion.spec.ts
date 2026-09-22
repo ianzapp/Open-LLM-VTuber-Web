@@ -119,8 +119,10 @@ test.describe('companion', () => {
     const moodButton = page.getByTestId('mood-button');
     if ((await moodButton.count()) === 0) test.skip(true, 'this avatar has a single mood');
 
+    const clean = (s: string | null | undefined) => (s ?? '').replace(/[✓▾]/g, '').trim();
+
     const model = decodeURIComponent(new URL(page.url()).hash.replace(/^#\/c\//, ''));
-    const originalLabel = (await moodButton.textContent())?.trim();
+    const originalLabel = clean(await moodButton.textContent());
 
     await moodButton.click();
     const items = page.locator('[role="menuitemradio"]');
@@ -145,7 +147,7 @@ test.describe('companion', () => {
     for (let i = 0; i < count; i++) {
       const checked = await items.nth(i).getAttribute('aria-checked');
       if (checked !== 'true') {
-        chosenLabel = (await items.nth(i).textContent())?.trim() ?? null;
+        chosenLabel = clean(await items.nth(i).textContent());
         await items.nth(i).click();
         break;
       }
@@ -153,8 +155,8 @@ test.describe('companion', () => {
     expect(chosenLabel).toBeTruthy();
 
     await expect(async () => {
-      const text = (await moodButton.textContent())?.trim();
-      expect(text).toContain(chosenLabel!.replace('✓', '').trim());
+      const text = clean(await moodButton.textContent());
+      expect(text).toContain(chosenLabel!);
     }).toPass({ timeout: 30_000 });
 
     const stored = await page.evaluate((m) => window.localStorage.getItem(`companion.mood.${m}`), model);
@@ -162,10 +164,10 @@ test.describe('companion', () => {
 
     // Restore the original mood so the fixture is left as it was found.
     await moodButton.click();
-    const originalItem = page.locator('[role="menuitemradio"]', { hasText: originalLabel ?? '' }).first();
+    const originalItem = page.locator('[role="menuitemradio"]', { hasText: originalLabel }).first();
     await originalItem.click();
     await expect(async () => {
-      const text = (await moodButton.textContent())?.trim();
+      const text = clean(await moodButton.textContent());
       expect(text).toBe(originalLabel);
     }).toPass({ timeout: 30_000 });
   });
@@ -205,7 +207,7 @@ test.describe('gallery', () => {
     const res = await request.get(new URL('/api/companion/characters', page.url()).toString());
     expect(res.status()).toBe(200);
     const { characters } = await res.json();
-    const models = new Set((characters ?? []).map((c: { live2d_model_name: string }) => c.live2d_model_name));
+    const models = new Set((characters ?? []).filter((c: { live2d_model_name: string }) => c.live2d_model_name).map((c: { live2d_model_name: string }) => c.live2d_model_name));
     expect(count).toBe(models.size);
   });
 

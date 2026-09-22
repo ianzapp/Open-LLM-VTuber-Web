@@ -172,7 +172,7 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; backgrou
   top: calc(env(safe-area-inset-top) + 56px);
   left: 12px;
   right: 12px;
-  z-index: 3;
+  z-index: 4; /* above gallery */
   pointer-events: none;
   display: flex;
   flex-direction: column;
@@ -425,8 +425,12 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; backgrou
   left: 0;
   right: 0;
   bottom: 0;
+  min-height: 60%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   padding: 40px 16px 14px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0.6) 45%, rgba(0, 0, 0, 0) 100%);
 }
 
 .cm-card-name {
@@ -473,8 +477,13 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; backgrou
 
 @media (min-width: 821px) {
   .cm-cards {
-    grid-template-columns: repeat(auto-fit, minmax(260px, 320px));
-    justify-content: center;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 400px));
   }
   .cm-card { aspect-ratio: 3 / 4; }
+}
+
+@media (min-width: 1280px) {
+  .cm-cards {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 440px));
+  }
 }
