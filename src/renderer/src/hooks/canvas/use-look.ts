@@ -62,14 +62,19 @@ export function useLookState() {
     setEmotion(null);
   }, [model, catalogue]);
 
-  // The canvas loads the model asynchronously; its expressions only exist afterwards.
+  // The canvas loads the model asynchronously and swaps it out on model switches;
+  // only recompose once the *currently loaded* model is the one `modelInfo.url`
+  // refers to and it has finished loading (see LAppAdapter#isModelReady) — otherwise
+  // this can fire against the previous model, or too early against the new one.
   useEffect(() => {
+    if (!modelInfo?.url) return undefined;
     let cancelled = false;
     const started = Date.now();
     const tick = () => {
       if (cancelled) return;
-      const loaded = !!(window as any).getLAppAdapter?.()?.getModel()?._expressions?.getSize?.();
-      if (loaded) { setReady((n) => n + 1); return; }
+      const adapter = (window as any).getLAppAdapter?.();
+      const ready = !!adapter?.isModelReady?.(modelInfo.url);
+      if (ready) { setReady((n) => n + 1); return; }
       if (Date.now() - started > READY_GIVE_UP_MS) return;
       window.setTimeout(tick, READY_POLL_MS);
     };

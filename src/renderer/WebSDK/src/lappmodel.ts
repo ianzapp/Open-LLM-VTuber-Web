@@ -1109,6 +1109,15 @@ export class LAppModel extends CubismUserModel {
     }
   }
 
+  /**
+   * Whether this model has finished loading (textures included) and is ready
+   * to have expressions applied. Exposed as a boolean so callers outside this
+   * file never need the `LoadStep` enum itself.
+   */
+  public isSetupComplete(): boolean {
+    return this._state === LoadStep.CompleteSetup;
+  }
+
   public async hasMocConsistencyFromFile() {
     CSM_ASSERT(this._modelSetting.getModelFileName().localeCompare(``));
 

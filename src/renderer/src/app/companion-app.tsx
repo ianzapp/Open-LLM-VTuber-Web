@@ -7,7 +7,8 @@ import { useProactiveSpeak } from '@/context/proactive-speak-context';
 import { useVAD } from '@/context/vad-context';
 import { useLook } from '@/context/look-context';
 import { useLive2DConfig } from '@/context/live2d-config-context';
-import { loadScene } from '@/engine/look-composer';
+import { useWebSocket } from '@/context/websocket-context';
+import { loadScene, sceneFileFromStored } from '@/engine/look-composer';
 import { notify } from '@/utils/notify';
 import { ChatBar } from './chat-bar';
 import { FloatingBubbles } from './floating-bubbles';
@@ -34,6 +35,7 @@ export function CompanionApp(): JSX.Element {
   const { settings: proactiveSpeakSettings, updateSettings: updateProactiveSpeakSettings } = useProactiveSpeak();
   const { catalogue } = useLook();
   const { modelInfo } = useLive2DConfig();
+  const { baseUrl } = useWebSocket();
   const showLooks = hasLooksUI(catalogue, backgroundFiles.length);
 
   // interrupt/stopMic may not be referentially stable across renders; keep the
@@ -67,8 +69,10 @@ export function CompanionApp(): JSX.Element {
     const stored = loadScene(window.localStorage, model);
     if (stored === null) {
       resetBackground();
-    } else if (stored !== backgroundUrl) {
-      setBackgroundUrl(stored);
+    } else {
+      const file = sceneFileFromStored(stored);
+      const url = file ? `${baseUrl}/bg/${file}` : '';
+      if (url !== backgroundUrl) setBackgroundUrl(url);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelInfo?.name, route.screen]);

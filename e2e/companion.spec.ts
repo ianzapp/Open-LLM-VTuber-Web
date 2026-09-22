@@ -201,7 +201,7 @@ test.describe('companion', () => {
 
   test('the looks sheet opens and closes', async ({ page }) => {
     const toggle = page.getByTestId('looks-toggle');
-    if ((await toggle.count()) === 0) test.skip(true, 'this avatar has no looks UI');
+    await expect(toggle).toBeVisible();
     await toggle.click();
     await expect(page.getByTestId('looks-sheet')).toBeVisible();
     await toggle.click();
@@ -210,7 +210,7 @@ test.describe('companion', () => {
 
   test('only one sheet is open at a time', async ({ page }) => {
     const toggle = page.getByTestId('looks-toggle');
-    if ((await toggle.count()) === 0) test.skip(true, 'this avatar has no looks UI');
+    await expect(toggle).toBeVisible();
     await toggle.click();
     await expect(page.getByTestId('looks-sheet')).toBeVisible();
     await page.getByTestId('thread-toggle').click();
@@ -220,7 +220,7 @@ test.describe('companion', () => {
 
   test('hit-test: every chip and scene tile is the top element at its centre', async ({ page }) => {
     const toggle = page.getByTestId('looks-toggle');
-    if ((await toggle.count()) === 0) test.skip(true, 'this avatar has no looks UI');
+    await expect(toggle).toBeVisible();
     await toggle.click();
     await expect(page.getByTestId('looks-sheet')).toBeVisible();
     const blocked = await page.evaluate(() => {
@@ -245,29 +245,31 @@ test.describe('companion', () => {
     await page.waitForSelector('#canvas');
     await page.waitForTimeout(3000);
 
-    const chip = page.getByTestId('look-colours-forest');
-    if ((await chip.count()) === 0) test.skip(true, 'this model has no forest colour chip (Beach only)');
-
     await page.getByTestId('looks-toggle').click();
     await expect(page.getByTestId('looks-sheet')).toBeVisible();
 
-    const before = await page.evaluate(readParam('Param79'));
+    const chip = page.getByTestId('look-colours-forest');
+    await expect(chip).toBeVisible();
     await chip.click();
     await expect(async () => {
       const value = await page.evaluate(readParam('Param79'));
-      expect(value).not.toBe(before);
       expect(value).toBeGreaterThan(0);
-    }).toPass({ timeout: 5000 });
+    }).toPass({ timeout: 3000 });
 
     await page.reload();
     await page.waitForSelector('#canvas');
     await page.waitForTimeout(3000);
-    const afterReload = await page.evaluate(readParam('Param79'));
-    expect(afterReload).toBeGreaterThan(0);
 
-    // Leave her as she was.
     await page.getByTestId('looks-toggle').click();
     await expect(page.getByTestId('looks-sheet')).toBeVisible();
+    const reloadedChip = page.getByTestId('look-colours-forest');
+    await expect(reloadedChip).toHaveAttribute('aria-checked', 'true');
+    await expect(async () => {
+      const value = await page.evaluate(readParam('Param79'));
+      expect(value).toBeGreaterThan(0);
+    }).toPass({ timeout: 3000 });
+
+    // Leave her as she was.
     await page.getByTestId('look-colours-snow').click();
   });
 });

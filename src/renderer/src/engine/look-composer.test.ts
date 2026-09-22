@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyLookTag, composeLook, defaultLookState, loadLook, loadScene, sanitizeLook, saveLook, saveScene,
+  applyLookTag, composeLook, defaultLookState, loadLook, loadScene, saveLook, saveScene,
+  sanitizeLook, sceneFileFromStored,
   type ComposedValue, type LooksCatalogue, type LookState,
 } from './look-composer';
 
@@ -141,6 +142,12 @@ describe('applyLookTag', () => {
     expect(applyLookTag(base, beach, 'nonsense', 'legs_1', true)).toBe(base);
     expect(applyLookTag(base, beach, 'poses', 'nope', true)).toBe(base);
   });
+  it('repeating a single-choice keyword puts it away, back to the section default', () => {
+    const on = applyLookTag(base, beach, 'poses', 'legs_1', true);
+    expect(on.pose).toBe('legs_1');
+    const off = applyLookTag(on, beach, 'poses', 'legs_1', true);
+    expect(off.pose).toBe('none');
+  });
 });
 
 describe('sanitizeLook', () => {
@@ -179,5 +186,21 @@ describe('storage', () => {
     const s = store();
     s.setItem('companion.look.beach', '{not json');
     expect(loadLook(s, 'beach')).toBeNull();
+  });
+});
+
+describe('sceneFileFromStored', () => {
+  it('passes a bare file name through unchanged', () => {
+    expect(sceneFileFromStored('sea.jpg')).toBe('sea.jpg');
+  });
+  it('treats null and empty as None', () => {
+    expect(sceneFileFromStored(null)).toBe('');
+    expect(sceneFileFromStored('')).toBe('');
+  });
+  it('migrates a legacy full URL to the file name after the last /bg/', () => {
+    expect(sceneFileFromStored('http://box.tail1.ts.net:12393/bg/sea.jpg')).toBe('sea.jpg');
+  });
+  it('falls back to the whole value if a legacy URL has no /bg/ segment', () => {
+    expect(sceneFileFromStored('http://example.com/sea.jpg')).toBe('http://example.com/sea.jpg');
   });
 });

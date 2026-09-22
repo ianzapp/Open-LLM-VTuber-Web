@@ -316,7 +316,7 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; backgrou
   -webkit-backdrop-filter: blur(18px);
   overflow: hidden;
 }
-.cm-looks-sheet { height: 54vh; }
+.cm-looks-sheet { height: 54vh; height: 54dvh; }
 
 .cm-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 16px; font-size: 13px; font-weight: 600; color: var(--cm-muted); }
 .cm-sheet-close { width: 40px; height: 40px; font-size: 13px; }

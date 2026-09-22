@@ -99,7 +99,12 @@ export function applyLookTag(
   if (!(sectionName in SINGLE) && !(sectionName in TOGGLE)) return state;
   if (!find(section(catalogue, key), id)) return state;
 
-  if (sectionName in SINGLE) return { ...state, [SINGLE[sectionName]]: id };
+  if (sectionName in SINGLE) {
+    const field = SINGLE[sectionName];
+    // Saying the same keyword again puts it away, back to the section's default.
+    if (state[field] === id) return { ...state, [field]: defaultLookState(catalogue)[field] };
+    return { ...state, [field]: id };
+  }
   const field = TOGGLE[sectionName];
   const list = state[field];
   return { ...state, [field]: list.includes(id) ? list.filter((x) => x !== id) : [...list, id] };
@@ -139,6 +144,18 @@ export function loadScene(storage: Reader, model: string): string | null {
 }
 export function saveScene(storage: Writer, model: string, url: string): void {
   try { storage.setItem(sceneKey(model), url); } catch { /* not remembered, that is all */ }
+}
+
+/**
+ * The stored scene value is a bare file name (or '' for None). Older stored values
+ * were a full URL — migrate those by taking the part after the last `/bg/`.
+ */
+export function sceneFileFromStored(value: string | null): string {
+  if (!value) return '';
+  if (!value.startsWith('http')) return value;
+  const marker = '/bg/';
+  const at = value.lastIndexOf(marker);
+  return at === -1 ? value : value.slice(at + marker.length);
 }
 
 export const EMPTY_LOOK: LookState = EMPTY;

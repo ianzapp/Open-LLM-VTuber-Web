@@ -39,7 +39,8 @@ export function LooksSheet({ onClose }: { onClose: () => void }): JSX.Element {
 
   const chooseScene = (option: { name: string; url: string }) => {
     setBackgroundUrl(option.url);
-    saveScene(window.localStorage, model, option.url);
+    // Store the file name (or '' for None), not the URL — see sceneFileFromStored.
+    saveScene(window.localStorage, model, option.url ? option.name : '');
   };
 
   return (

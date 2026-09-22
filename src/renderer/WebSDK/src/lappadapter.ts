@@ -83,6 +83,21 @@ export class LAppAdapter {
     this.getModel()?.setComposedExpression(params);
   }
 
+  /**
+   * True only when the currently loaded model is the one `url` refers to
+   * (its `_modelHomeDir` is a prefix of `url`) and it has finished loading
+   * (textures included), so expressions are safe to apply. Guards against
+   * applying a look meant for a model that hasn't replaced the previous one
+   * yet, or replaying it against the previous model's still-loaded state.
+   */
+  public isModelReady(url: string): boolean {
+    const model = this.getModel();
+    if (!model || typeof url !== 'string' || !url) return false;
+    const homeDir = model._modelHomeDir;
+    if (!homeDir || !url.includes(homeDir)) return false;
+    return model.isSetupComplete?.() ?? false;
+  }
+
   // @deprecated
   public nextChara(): void {
     this.getMgr().nextScene();
