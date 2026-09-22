@@ -814,9 +814,12 @@ export class LAppModel extends CubismUserModel {
    * app merges every active look (pose, hands, accessories, colour, effects) and the
    * current facial emotion into one map and hands it over here. An empty map clears.
    *
-   * @param params parameter id -> value
+   * @param params parameter id -> value, or -> { value, blend } to use a blend mode
+   *   other than the default 'Add' (e.g. 'Multiply' for closed/smiling eyes).
    */
-  public setComposedExpression(params: Record<string, number>): void {
+  public setComposedExpression(
+    params: Record<string, number | { value: number; blend?: 'Add' | 'Multiply' | 'Overwrite' }>
+  ): void {
     if (this._expressionManager == null) {
       return;
     }
@@ -824,6 +827,13 @@ export class LAppModel extends CubismUserModel {
     const ids = Object.keys(params ?? {});
     if (ids.length === 0) {
       this._expressionManager.stopAllMotions();
+      const stale: ACubismMotion = this._expressions.getValue(
+        LAppModel.COMPOSED_EXPRESSION_ID
+      );
+      if (stale != null) {
+        ACubismMotion.delete(stale);
+        this._expressions.setValue(LAppModel.COMPOSED_EXPRESSION_ID, null);
+      }
       return;
     }
 
@@ -831,7 +841,15 @@ export class LAppModel extends CubismUserModel {
       Type: 'Live2D Expression',
       FadeInTime: 0.2,
       FadeOutTime: 0.2,
-      Parameters: ids.map((id) => ({ Id: id, Value: params[id], Blend: 'Add' })),
+      Parameters: ids.map((id) => {
+        const entry = params[id];
+        const isObject = typeof entry === 'object' && entry !== null;
+        return {
+          Id: id,
+          Value: isObject ? entry.value : entry,
+          Blend: (isObject ? entry.blend : undefined) ?? 'Add',
+        };
+      }),
     });
     const bytes = new TextEncoder().encode(json);
     const buffer: ArrayBuffer = bytes.buffer.slice(
@@ -840,8 +858,8 @@ export class LAppModel extends CubismUserModel {
     );
 
     // Replace the previous synthetic expression the same way the loader replaces a
-    // reloaded one: stop it first, then free it, then install and start the new one.
-    this._expressionManager.stopAllMotions();
+    // reloaded one: free it, then install and start the new one. Do NOT call
+    // stopAllMotions() here — that would kill the 0.2s crossfade into this motion.
     const previous: ACubismMotion = this._expressions.getValue(
       LAppModel.COMPOSED_EXPRESSION_ID
     );

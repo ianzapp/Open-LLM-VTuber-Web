@@ -11,8 +11,11 @@ export interface LookState {
   effects: string[];
 }
 
+/** A parameter contribution: a plain number is an implicit 'Add'; an object names its blend mode. */
+export type ComposedValue = number | { value: number; blend: 'Add' | 'Multiply' | 'Overwrite' };
+
 /** Reads the parameter map of one of the model's own `.exp3.json` expressions. */
-export type ExpressionParams = (name: string) => Record<string, number> | null;
+export type ExpressionParams = (name: string) => Record<string, ComposedValue> | null;
 
 const EMPTY: LookState = { pose: null, hand: null, colour: null, accessories: [], effects: [] };
 
@@ -31,7 +34,7 @@ export function defaultLookState(catalogue: LooksCatalogue | null): LookState {
   };
 }
 
-const paramsOf = (entry: LookEntry | undefined, expressionParams: ExpressionParams): Record<string, number> | null => {
+const paramsOf = (entry: LookEntry | undefined, expressionParams: ExpressionParams): Record<string, ComposedValue> | null => {
   if (!entry) return null;
   if (entry.params) return entry.params;
   if (!entry.expr) return null; // a "None"/"Default" entry contributes nothing
@@ -42,17 +45,23 @@ const paramsOf = (entry: LookEntry | undefined, expressionParams: ExpressionPara
 
 /**
  * Merge every active look and the current facial emotion into one parameter map.
- * Later contributions win on a shared parameter; the emotion is added last.
+ * The emotion is merged last: when two Add contributions hit the same parameter id
+ * they sum, but a Multiply or Overwrite contribution from the emotion replaces
+ * whatever was there (the emotion wins on its own parameters).
  */
 export function composeLook(
   catalogue: LooksCatalogue | null,
   state: LookState,
   emotionExpr: string | null,
   expressionParams: ExpressionParams,
-): Record<string, number> {
-  const out: Record<string, number> = {};
-  const add = (params: Record<string, number> | null) => {
-    if (params) Object.assign(out, params);
+): Record<string, ComposedValue> {
+  const out: Record<string, ComposedValue> = {};
+  const add = (params: Record<string, ComposedValue> | null) => {
+    if (!params) return;
+    Object.entries(params).forEach(([id, val]) => {
+      const existing = out[id];
+      out[id] = typeof val === 'number' && typeof existing === 'number' ? existing + val : val;
+    });
   };
 
   add(paramsOf(find(section(catalogue, 'poses'), state.pose), expressionParams));

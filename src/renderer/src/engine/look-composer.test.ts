@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyLookTag, composeLook, defaultLookState, loadLook, loadScene, sanitizeLook, saveLook, saveScene,
-  type LooksCatalogue, type LookState,
+  type ComposedValue, type LooksCatalogue, type LookState,
 } from './look-composer';
 
 const beach: LooksCatalogue = {
@@ -31,7 +31,7 @@ const mao: LooksCatalogue = {
   ],
 };
 
-const EXPR: Record<string, Record<string, number>> = {
+const EXPR: Record<string, Record<string, ComposedValue>> = {
   N1: { ParamLeg1: 1 },
   N2: { ParamLeg2: 1 },
   N5: { ParamHand1: 1 },
@@ -39,6 +39,7 @@ const EXPR: Record<string, Record<string, number>> = {
   Y: { ParamTails: 1 },
   '11111111': { Param78: 0.92, Param79: 7 },
   F1: { ParamHeart: 1, Param79: 3 },
+  MULT: { ParamEyeLOpen: { value: 0, blend: 'Multiply' } },
 };
 const look = (name: string) => EXPR[name] ?? null;
 
@@ -82,9 +83,24 @@ describe('composeLook', () => {
     const state: LookState = { pose: 'legs_1', hand: null, colour: null, accessories: ['cocktail'], effects: [] };
     expect(composeLook(beach, state, null, look)).toEqual({ ParamLeg1: 1, ParamCocktail: 1, ParamTails: 1 });
   });
-  it('lays the emotion over the look and wins on a shared parameter', () => {
+  it('sums an Add emotion contribution with an Add look contribution on the same id', () => {
     const state: LookState = { ...defaultLookState(beach), colour: 'forest' };
-    expect(composeLook(beach, state, 'F1', look)).toEqual({ Param78: 0.92, Param79: 3, ParamHeart: 1 });
+    expect(composeLook(beach, state, 'F1', look)).toEqual({ Param78: 0.92, Param79: 10, ParamHeart: 1 });
+  });
+  it('sums an Add pose contribution and an Add emotion contribution on the same id', () => {
+    const state: LookState = { ...defaultLookState(beach), pose: 'legs_1' };
+    const localLook = (name: string) => (name === 'F3' ? { ParamLeg1: 1 } : look(name));
+    expect(composeLook(beach, state, 'F3', localLook)).toEqual({ ParamLeg1: 2 });
+  });
+  it('returns an emotion param with a Multiply blend as that object', () => {
+    expect(composeLook(null, defaultLookState(null), 'MULT', look)).toEqual({
+      ParamEyeLOpen: { value: 0, blend: 'Multiply' },
+    });
+  });
+  it('a Multiply emotion on an id a pose also touches replaces the pose\'s number', () => {
+    const state: LookState = { ...defaultLookState(beach), pose: 'legs_1' };
+    const localLook = (name: string) => (name === 'F2' ? { ParamLeg1: { value: 0, blend: 'Multiply' as const } } : look(name));
+    expect(composeLook(beach, state, 'F2', localLook)).toEqual({ ParamLeg1: { value: 0, blend: 'Multiply' } });
   });
   it('ignores unknown ids and a null emotion', () => {
     const state: LookState = { pose: 'nope', hand: 'nope', colour: 'nope', accessories: ['nope'], effects: ['nope'] };

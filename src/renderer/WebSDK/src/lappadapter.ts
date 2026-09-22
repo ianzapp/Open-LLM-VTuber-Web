@@ -77,7 +77,9 @@ export class LAppAdapter {
     this.getModel()?.setExpression(name);
   }
 
-  public setComposedExpression(params: Record<string, number>): void {
+  public setComposedExpression(
+    params: Record<string, number | { value: number; blend?: 'Add' | 'Multiply' | 'Overwrite' }>
+  ): void {
     this.getModel()?.setComposedExpression(params);
   }
 

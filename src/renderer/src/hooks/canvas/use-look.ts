@@ -2,26 +2,37 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLive2DConfig, type LooksCatalogue } from '@/context/live2d-config-context';
 import {
-  applyLookTag, composeLook, defaultLookState, loadLook, sanitizeLook, saveLook, type LookState,
+  applyLookTag, composeLook, defaultLookState, loadLook, sanitizeLook, saveLook,
+  type ComposedValue, type LookState,
 } from '@/engine/look-composer';
 
 const ALLOW_KEY = 'companion.lookByHer';
 const READY_POLL_MS = 250;
 const READY_GIVE_UP_MS = 20_000;
 
+// Framework ExpressionBlendType: Additive = 0, Multiply = 1, Overwrite = 2 (see
+// WebSDK/Framework/src/motion/cubismexpressionmotion.ts).
+const BLEND_BY_TYPE: Record<number, 'Add' | 'Multiply' | 'Overwrite'> = {
+  0: 'Add',
+  1: 'Multiply',
+  2: 'Overwrite',
+};
+
 /** Reads the parameter map of one of the loaded model's own expressions. */
-function readExpressionParams(name: string): Record<string, number> | null {
+function readExpressionParams(name: string): Record<string, ComposedValue> | null {
   try {
     const model = (window as any).getLAppAdapter?.()?.getModel();
     const motion = model?._expressions?.getValue?.(name);
     if (!motion) return null;
     const list = motion.getExpressionParameters?.() ?? motion._parameters;
     if (!list) return null;
-    const out: Record<string, number> = {};
+    const out: Record<string, ComposedValue> = {};
     for (let i = 0; i < list.getSize(); i += 1) {
       const p = list.at(i);
       const id = p?.parameterId?.getString?.().s;
-      if (typeof id === 'string' && id) out[id] = p.value;
+      if (typeof id !== 'string' || !id) continue;
+      const blend = BLEND_BY_TYPE[p.blendType] ?? 'Add';
+      out[id] = blend === 'Add' ? p.value : { value: p.value, blend };
     }
     return Object.keys(out).length ? out : null;
   } catch (error) {
