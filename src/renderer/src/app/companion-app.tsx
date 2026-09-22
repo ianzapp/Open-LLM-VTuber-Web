@@ -5,10 +5,14 @@ import { useBgUrl } from '@/context/bgurl-context';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useProactiveSpeak } from '@/context/proactive-speak-context';
 import { useVAD } from '@/context/vad-context';
+import { useLook } from '@/context/look-context';
+import { useLive2DConfig } from '@/context/live2d-config-context';
+import { loadScene } from '@/engine/look-composer';
 import { notify } from '@/utils/notify';
 import { ChatBar } from './chat-bar';
 import { FloatingBubbles } from './floating-bubbles';
 import { Gallery } from './gallery';
+import { LooksSheet } from './looks-sheet';
 import { ThreadSheet } from './thread-sheet';
 import { Toasts } from './toasts';
 import { TopStrip } from './top-strip';
@@ -16,16 +20,21 @@ import { useActiveCharacter } from './use-active-character';
 import { useCharacters } from './use-characters';
 import { useHashRoute } from './use-hash-route';
 import { useKeyboardInset } from './use-keyboard-inset';
+import { hasLooksUI } from './logic/looks-ui';
 
 export function CompanionApp(): JSX.Element {
-  const { backgroundUrl } = useBgUrl();
+  const { backgroundUrl, setBackgroundUrl, backgroundFiles } = useBgUrl();
   const [threadOpen, setThreadOpen] = useState(false);
+  const [looksOpen, setLooksOpen] = useState(false);
   const inset = useKeyboardInset();
   const route = useHashRoute();
   const { groups, state, reload } = useCharacters();
   const { interrupt } = useInterrupt();
   const { stopMic } = useVAD();
   const { settings: proactiveSpeakSettings, updateSettings: updateProactiveSpeakSettings } = useProactiveSpeak();
+  const { catalogue } = useLook();
+  const { modelInfo } = useLive2DConfig();
+  const showLooks = hasLooksUI(catalogue, backgroundFiles.length);
 
   // interrupt/stopMic may not be referentially stable across renders; keep the
   // latest callbacks in refs so this effect only fires when the screen changes.
@@ -39,11 +48,23 @@ export function CompanionApp(): JSX.Element {
       interruptRef.current();
       stopMicRef.current();
       setThreadOpen(false);
+      setLooksOpen(false);
     }
   }, [route.screen]);
 
   // Returning to the gallery refreshes the list (silently — see use-characters).
   useEffect(() => { if (route.screen === 'gallery') reload(); }, [route.screen, reload]);
+
+  // Per-avatar scene: reapply the background stored for this model, unless the gallery
+  // (which keeps the default) is showing. An empty string means "None".
+  useEffect(() => {
+    if (route.screen === 'gallery') return;
+    const model = modelInfo?.name ?? '';
+    if (!model) return;
+    const stored = loadScene(window.localStorage, model);
+    if (stored !== null && stored !== backgroundUrl) setBackgroundUrl(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelInfo?.name, route.screen]);
 
   // The old UI could turn this on; the new UI has no control for it and she must not start talking under the gallery.
   useEffect(() => {
@@ -76,13 +97,21 @@ export function CompanionApp(): JSX.Element {
           <div className="cm-stage">
             {group && !current ? (
               <div className="cm-loading">{`Loading ${group.name}…`}</div>
+            ) : looksOpen ? (
+              <LooksSheet onClose={() => setLooksOpen(false)} />
             ) : threadOpen ? (
               <ThreadSheet onClose={() => setThreadOpen(false)} />
             ) : (
               <FloatingBubbles />
             )}
           </div>
-          <ChatBar threadOpen={threadOpen} onToggleThread={() => setThreadOpen((v) => !v)} />
+          <ChatBar
+            threadOpen={threadOpen}
+            onToggleThread={() => { setLooksOpen(false); setThreadOpen((v) => !v); }}
+            looksOpen={looksOpen}
+            showLooks={showLooks}
+            onToggleLooks={() => { setThreadOpen(false); setLooksOpen((v) => !v); }}
+          />
         </div>
       ) : (
         <Gallery groups={groups} state={state} onRetry={reload} />

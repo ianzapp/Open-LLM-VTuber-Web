@@ -2,6 +2,16 @@ import { expect, test } from '@playwright/test';
 
 test.skip(!process.env.BASE_URL, 'set BASE_URL to a deployed build');
 
+const readParam = (id: string) => `(() => {
+  const m = (window as any).getLAppAdapter?.()?.getModel()?._model;
+  if (!m) return null;
+  const ids = m._parameterIds;
+  for (let i = 0; i < ids.getSize(); i += 1) {
+    if (ids.at(i).getString().s === '${id}') return m.getParameterValueByIndex(i);
+  }
+  return null;
+})()`;
+
 test.describe('companion', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('./');
@@ -187,6 +197,76 @@ test.describe('companion', () => {
     }
     const touch = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
     expect((await request.get(new URL(touch!, page.url()).toString())).status()).toBe(200);
+  });
+
+  test('the looks sheet opens and closes', async ({ page }) => {
+    const toggle = page.getByTestId('looks-toggle');
+    if ((await toggle.count()) === 0) test.skip(true, 'this avatar has no looks UI');
+    await toggle.click();
+    await expect(page.getByTestId('looks-sheet')).toBeVisible();
+    await page.getByLabel('Close looks').click();
+    await expect(page.getByTestId('looks-sheet')).toHaveCount(0);
+  });
+
+  test('only one sheet is open at a time', async ({ page }) => {
+    const toggle = page.getByTestId('looks-toggle');
+    if ((await toggle.count()) === 0) test.skip(true, 'this avatar has no looks UI');
+    await toggle.click();
+    await expect(page.getByTestId('looks-sheet')).toBeVisible();
+    await page.getByTestId('thread-toggle').click();
+    await expect(page.getByTestId('thread-sheet')).toBeVisible();
+    await expect(page.getByTestId('looks-sheet')).toHaveCount(0);
+  });
+
+  test('hit-test: every chip and scene tile is the top element at its centre', async ({ page }) => {
+    const toggle = page.getByTestId('looks-toggle');
+    if ((await toggle.count()) === 0) test.skip(true, 'this avatar has no looks UI');
+    await toggle.click();
+    await expect(page.getByTestId('looks-sheet')).toBeVisible();
+    const blocked = await page.evaluate(() => {
+      const out: string[] = [];
+      document.querySelectorAll<HTMLElement>('[data-testid="looks-sheet"] .cm-chip, [data-testid="looks-sheet"] .cm-scene').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!top || !(top === el || el.contains(top) || top.contains(el))) {
+          out.push(el.getAttribute('data-testid') || el.tagName);
+        }
+      });
+      return out;
+    });
+    expect(blocked).toEqual([]);
+  });
+
+  test('a colour chip changes a model parameter and survives a reload', async ({ page }) => {
+    await page.goto('./#/c/beach');
+    await page.waitForSelector('#canvas');
+    await page.waitForTimeout(3000);
+
+    const chip = page.getByTestId('look-colours-forest');
+    if ((await chip.count()) === 0) test.skip(true, 'this model has no forest colour chip (Beach only)');
+
+    await page.getByTestId('looks-toggle').click();
+    await expect(page.getByTestId('looks-sheet')).toBeVisible();
+
+    const before = await page.evaluate(readParam('Param79'));
+    await chip.click();
+    await expect(async () => {
+      const value = await page.evaluate(readParam('Param79'));
+      expect(value).not.toBe(before);
+      expect(value).toBeGreaterThan(0);
+    }).toPass({ timeout: 5000 });
+
+    await page.reload();
+    await page.waitForSelector('#canvas');
+    await page.waitForTimeout(3000);
+    const afterReload = await page.evaluate(readParam('Param79'));
+    expect(afterReload).toBeGreaterThan(0);
+
+    // Leave her as she was.
+    await page.getByTestId('looks-toggle').click();
+    await expect(page.getByTestId('looks-sheet')).toBeVisible();
+    await page.getByTestId('look-colours-snow').click();
   });
 });
 

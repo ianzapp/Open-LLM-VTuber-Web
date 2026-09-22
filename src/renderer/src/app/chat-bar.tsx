@@ -17,7 +17,15 @@ const MIC_LABEL: Record<MicVisual, string> = {
   unavailable: 'Voice needs the HTTPS address',
 };
 
-export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; onToggleThread: () => void }): JSX.Element {
+export function ChatBar({
+  threadOpen, onToggleThread, looksOpen, showLooks, onToggleLooks,
+}: {
+  threadOpen: boolean;
+  onToggleThread: () => void;
+  looksOpen: boolean;
+  showLooks: boolean;
+  onToggleLooks: () => void;
+}): JSX.Element {
   const text = useTextInput();
   const area = useRef<HTMLTextAreaElement>(null);
   const { aiState } = useAiState();
@@ -72,6 +80,11 @@ export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; o
 
   return (
     <div className="cm-chatbar cm-island" data-testid="chat-bar">
+      {showLooks && (
+        <button type="button" className="cm-round" data-testid="looks-toggle" aria-pressed={looksOpen}
+          aria-label={looksOpen ? 'Close looks' : 'Open looks'}
+          onPointerDown={(e) => e.preventDefault()} onClick={onToggleLooks}><span aria-hidden="true">✨</span></button>
+      )}
       <button type="button" className="cm-round" data-testid="thread-toggle" aria-pressed={threadOpen}
         aria-label={threadOpen ? 'Close conversation' : 'Open conversation'}
         onPointerDown={(e) => e.preventDefault()} onClick={onToggleThread}>≡</button>
