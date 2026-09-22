@@ -11,6 +11,7 @@ export class AudioManager {
   private player: HTMLAudioElement | null = null;
   private unlocked = false;
   private currentOnStop: (() => void) | null = null;
+  private onStopAll: (() => void) | null = null;
 
   /** The one audio element every sentence plays through (iOS unlocks per element). */
   getPlayer(): HTMLAudioElement {
@@ -41,6 +42,11 @@ export class AudioManager {
 
   /** A real sentence hit NotAllowedError: the element is locked again (e.g. after backgrounding on iOS). */
   markLocked(): void { this.unlocked = false; }
+
+  /**
+   * Set a callback to run whenever audio stops (playback stop or interrupt).
+   */
+  setOnStopAll(cb: (() => void) | null): void { this.onStopAll = cb; }
 
   /**
    * Set the current playing audio
@@ -95,6 +101,7 @@ export class AudioManager {
     } else {
       console.log('[AudioManager] No current audio playing to stop.');
     }
+    this.onStopAll?.();
   }
 
   /**

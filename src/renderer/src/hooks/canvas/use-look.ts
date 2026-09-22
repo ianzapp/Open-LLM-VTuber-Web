@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLive2DConfig, type LooksCatalogue } from '@/context/live2d-config-context';
+import { audioManager } from '@/utils/audio-manager';
 import {
   applyLookTag, composeLook, defaultLookState, loadLook, sanitizeLook, saveLook,
   type ComposedValue, type LookState,
@@ -86,6 +87,14 @@ export function useLookState() {
       console.warn('look: could not apply the composed expression', error);
     }
   }, [catalogue, state, emotion, ready]);
+
+  // Clear facial reaction whenever audio playback is stopped (interrupt, character switch, etc.)
+  useEffect(() => {
+    audioManager.setOnStopAll(() => setEmotion(null));
+    return () => {
+      audioManager.setOnStopAll(null);
+    };
+  }, []);
 
   const write = useCallback((next: LookState) => {
     setState(next);

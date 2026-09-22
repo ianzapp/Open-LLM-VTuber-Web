@@ -106,4 +106,31 @@ describe('AudioManager', () => {
     manager.stopCurrentAudioAndLipSync();
     expect(onStop).not.toHaveBeenCalled();
   });
+
+  it('setOnStopAll() runs callback when stop is called (with and without current audio)', () => {
+    const manager = new AudioManager();
+    const player = manager.getPlayer() as unknown as FakeAudio;
+    const onStopAll = vi.fn();
+    manager.setOnStopAll(onStopAll);
+
+    // Test with current audio
+    manager.setCurrentAudio(player as unknown as HTMLAudioElement, {});
+    manager.stopCurrentAudioAndLipSync();
+    expect(onStopAll).toHaveBeenCalledTimes(1);
+
+    // Test without current audio
+    manager.stopCurrentAudioAndLipSync();
+    expect(onStopAll).toHaveBeenCalledTimes(2);
+  });
+
+  it('setOnStopAll(null) disables the callback', () => {
+    const manager = new AudioManager();
+    const player = manager.getPlayer() as unknown as FakeAudio;
+    const onStopAll = vi.fn();
+    manager.setOnStopAll(onStopAll);
+    manager.setOnStopAll(null);
+    manager.setCurrentAudio(player as unknown as HTMLAudioElement, {});
+    manager.stopCurrentAudioAndLipSync();
+    expect(onStopAll).not.toHaveBeenCalled();
+  });
 });
