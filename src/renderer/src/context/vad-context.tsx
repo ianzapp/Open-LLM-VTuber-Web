@@ -38,6 +38,9 @@ interface VADState {
   /** Microphone active state */
   micOn: boolean;
 
+  /** Live microphone diagnostics (a ref: read it, do not render from it directly) */
+  micStatsRef: React.MutableRefObject<{ level: number; peakLevel: number; peakProb: number; frames: number }>;
+
   /** Set microphone state */
   setMicOn: (value: boolean) => void;
 
@@ -78,6 +81,10 @@ interface VADState {
 /**
  * Default values and constants
  */
+/** iPhone/iPad Safari, including iPadOS reporting itself as a Mac. */
+const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 const DEFAULT_VAD_SETTINGS: VADSettings = {
   positiveSpeechThreshold: 50,
   negativeSpeechThreshold: 35,
@@ -110,11 +117,15 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     node: AudioNodeVAD;
     stream: MediaStream;
     source: MediaStreamAudioSourceNode;
+    boost: GainNode;
     mute: GainNode;
     ctx: AudioContext;
   } | null>(null);
   const framesRef = useRef(0);
+  /** Live microphone diagnostics: last-frame level, peak level and peak speech probability. */
+  const micStatsRef = useRef({ level: 0, peakLevel: 0, peakProb: 0, frames: 0 });
   const noAudioWarningTimeoutRef = useRef<any>(null);
+  const silentWarningTimeoutRef = useRef<any>(null);
   const previousTriggeredProbabilityRef = useRef(0);
   const previousAiStateRef = useRef<AiState>('idle');
 
@@ -232,8 +243,17 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
   /**
    * Handle frame processing event
    */
-  const handleFrameProcessed = useCallback((probs: { isSpeech: number }) => {
+  const handleFrameProcessed = useCallback((probs: { isSpeech: number }, frame?: Float32Array) => {
     framesRef.current += 1;
+    const s = micStatsRef.current;
+    s.frames += 1;
+    if (frame) {
+      let peak = 0;
+      for (let i = 0; i < frame.length; i += 4) { const a = Math.abs(frame[i]); if (a > peak) peak = a; }
+      s.level = peak;
+      if (peak > s.peakLevel) s.peakLevel = peak;
+    }
+    if (probs.isSpeech > s.peakProb) s.peakProb = probs.isSpeech;
     if (probs.isSpeech > previousTriggeredProbabilityRef.current) {
       setPreviousTriggeredProbability(probs.isSpeech);
     }
@@ -294,7 +314,9 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
   const initVAD = async (ctx: AudioContext) => {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
-        channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true,
+        // iOS Safari's voice-processing capture (echo cancellation + noise suppression) hands the
+        // Web Audio graph a near-silent signal; ask it for the raw microphone instead.
+        channelCount: 1, echoCancellation: !IS_IOS, autoGainControl: !IS_IOS, noiseSuppression: !IS_IOS,
       },
     });
     const source = new MediaStreamAudioSourceNode(ctx, { mediaStream: stream });
@@ -312,7 +334,12 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
       onSpeechEnd: handleSpeechEnd,
       onVADMisfire: handleVADMisfire,
     });
-    node.receive(source);
+    // iOS Safari hands over a quiet, noisy capture (its auto-gain does not apply here);
+    // boost it so speech sits clearly above the noise for the detector.
+    const boost = ctx.createGain();
+    boost.gain.value = IS_IOS ? 3 : 1;
+    source.connect(boost);
+    node.receive(boost);
     // Safari only runs worklet nodes that reach the destination: route through silence.
     const mute = ctx.createGain();
     mute.gain.value = 0;
@@ -321,7 +348,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     mute.connect(ctx.destination);
     if (ctx.state !== 'running') await ctx.resume().catch(() => {});
     vadRef.current = {
-      node, stream, source, mute, ctx,
+      node, stream, source, boost, mute, ctx,
     };
     node.start();
   };
@@ -351,13 +378,31 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
       }
       noAudioWarningTimeoutRef.current = window.setTimeout(() => {
         if (vadRef.current && framesRef.current === 0) {
+          const v = vadRef.current;
+          const track = v.stream.getAudioTracks()[0];
+          const path = (v.node as any).audioNode instanceof AudioWorkletNode ? 'worklet' : 'script';
           notify(
             'warning',
             'The microphone is on but no audio is arriving',
-            'Turn it off and on again; on iPhone make sure Safari has microphone access.',
+            `ctx ${v.ctx.state} @${v.ctx.sampleRate} · ${path} · track ${track ? `${track.readyState}${track.muted ? ' muted' : ''}${track.enabled ? '' : ' disabled'}` : 'none'}`,
           );
         }
       }, 4000);
+      micStatsRef.current = { level: 0, peakLevel: 0, peakProb: 0, frames: 0 };
+      if (silentWarningTimeoutRef.current !== null) window.clearTimeout(silentWarningTimeoutRef.current);
+      // Audio arrives but nothing was ever taken for speech: say how loud it was.
+      silentWarningTimeoutRef.current = window.setTimeout(() => {
+        const s = micStatsRef.current;
+        if (!vadRef.current || s.frames === 0) return;
+        if (s.peakProb < settingsRef.current.positiveSpeechThreshold / 100) {
+          const pct = (x: number) => `${Math.round(x * 100)}%`;
+          notify(
+            'warning',
+            s.peakLevel < 0.01 ? 'The microphone is delivering silence' : 'Hearing sound, but no speech was detected',
+            `${s.frames} frames · peak level ${pct(s.peakLevel)} · best speech score ${pct(s.peakProb)} (needs ${pct(settingsRef.current.positiveSpeechThreshold / 100)})`,
+          );
+        }
+      }, 8000);
     } catch (error) {
       console.error('Failed to start VAD:', error);
       notify('error', `${t('error.failedStartVAD')}: ${error}`);
@@ -369,6 +414,10 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
    */
   const stopMic = useCallback(() => {
     console.log('Stopping VAD');
+    if (silentWarningTimeoutRef.current !== null) {
+      window.clearTimeout(silentWarningTimeoutRef.current);
+      silentWarningTimeoutRef.current = null;
+    }
     if (noAudioWarningTimeoutRef.current !== null) {
       window.clearTimeout(noAudioWarningTimeoutRef.current);
       noAudioWarningTimeoutRef.current = null;
@@ -378,6 +427,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
       v.node.pause();
       v.node.destroy();
       v.source.disconnect();
+      v.boost.disconnect();
       v.mute.disconnect();
       v.stream.getTracks().forEach((tr) => tr.stop());
       void v.ctx.close().catch(() => {});
@@ -417,6 +467,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     () => ({
       autoStopMic: autoStopMicRef.current,
       micOn,
+      micStatsRef,
       setMicOn,
       setAutoStopMic,
       startMic,

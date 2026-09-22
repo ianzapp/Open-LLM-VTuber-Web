@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAiState } from '@/context/ai-state-context';
 import { useSubtitle } from '@/context/subtitle-context';
+import { useVAD } from '@/context/vad-context';
 import { useTextInput } from '@/hooks/footer/use-text-input';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useMicToggle } from '@/hooks/utils/use-mic-toggle';
@@ -24,6 +25,15 @@ export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; o
   const { handleMicToggle, micOn } = useMicToggle();
   const { interrupt } = useInterrupt();
   const { wsState } = useWebSocket();
+  const { micStatsRef } = useVAD();
+  const [level, setLevel] = useState(0);
+
+  // Show what the microphone hears: poll the level while it is on (no per-frame renders).
+  useEffect(() => {
+    if (!micOn) { setLevel(0); return undefined; }
+    const timer = window.setInterval(() => setLevel(Math.min(1, micStatsRef.current.level * 4)), 120);
+    return () => window.clearInterval(timer);
+  }, [micOn, micStatsRef]);
 
   const speaking = aiState === 'thinking-speaking';
   const visual = micVisualState({
@@ -93,6 +103,7 @@ export function ChatBar({ threadOpen, onToggleThread }: { threadOpen: boolean; o
           onPointerDown={(e) => e.preventDefault()} onClick={send}>↑</button>
       ) : (
         <button type="button" className="cm-round cm-mic-small" data-testid="mic" data-state={visual} aria-label={MIC_LABEL[visual]}
+          style={visual === 'listening' ? { boxShadow: `0 0 0 ${Math.round(2 + level * 10)}px rgba(255, 255, 255, ${0.15 + level * 0.5})` } : undefined}
           onPointerDown={(e) => e.preventDefault()} onClick={onMic}><span aria-hidden="true">🎙</span></button>
       )}
     </div>

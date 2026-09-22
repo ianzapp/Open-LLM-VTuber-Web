@@ -12,7 +12,9 @@ export function Toasts(): JSX.Element {
       if (notice.level === 'success') return; // fires on every card tap / reconnect
       const id = next++;
       setItems((cur) => [...cur.slice(-2), { ...notice, id }]);
-      window.setTimeout(() => setItems((cur) => cur.filter((t) => t.id !== id)), 2500);
+      // Problems stay long enough to be read; plain notices go quickly.
+      const ttl = notice.level === 'info' ? 2500 : 12000;
+      window.setTimeout(() => setItems((cur) => cur.filter((t) => t.id !== id)), ttl);
     });
     return () => setNotifySink(null);
   }, []);
