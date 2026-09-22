@@ -35,7 +35,11 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; backgrou
   position: absolute;
   inset: 0;
   z-index: 1;
+  transition: bottom 0.25s ease;
 }
+
+/* She must stay visible above the Looks sheet while choosing a look. */
+.cm-root[data-looks-open='true'] .cm-canvas-host { bottom: 56%; }
 
 .cm-canvas-host canvas {
   touch-action: none; /* the avatar handles its own gestures */
@@ -312,6 +316,8 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; backgrou
   -webkit-backdrop-filter: blur(18px);
   overflow: hidden;
 }
+.cm-looks-sheet { height: 54vh; }
+
 .cm-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 16px; font-size: 13px; font-weight: 600; color: var(--cm-muted); }
 .cm-sheet-close { width: 40px; height: 40px; font-size: 13px; }
 

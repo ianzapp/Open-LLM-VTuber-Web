@@ -23,7 +23,7 @@ import { useKeyboardInset } from './use-keyboard-inset';
 import { hasLooksUI } from './logic/looks-ui';
 
 export function CompanionApp(): JSX.Element {
-  const { backgroundUrl, setBackgroundUrl, backgroundFiles } = useBgUrl();
+  const { backgroundUrl, setBackgroundUrl, backgroundFiles, resetBackground } = useBgUrl();
   const [threadOpen, setThreadOpen] = useState(false);
   const [looksOpen, setLooksOpen] = useState(false);
   const inset = useKeyboardInset();
@@ -58,11 +58,18 @@ export function CompanionApp(): JSX.Element {
   // Per-avatar scene: reapply the background stored for this model, unless the gallery
   // (which keeps the default) is showing. An empty string means "None".
   useEffect(() => {
-    if (route.screen === 'gallery') return;
+    if (route.screen === 'gallery') {
+      resetBackground();
+      return;
+    }
     const model = modelInfo?.name ?? '';
     if (!model) return;
     const stored = loadScene(window.localStorage, model);
-    if (stored !== null && stored !== backgroundUrl) setBackgroundUrl(stored);
+    if (stored === null) {
+      resetBackground();
+    } else if (stored !== backgroundUrl) {
+      setBackgroundUrl(stored);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelInfo?.name, route.screen]);
 
@@ -85,7 +92,7 @@ export function CompanionApp(): JSX.Element {
   }, [route, state, group]);
 
   return (
-    <div className="cm-root">
+    <div className="cm-root" data-looks-open={looksOpen}>
       <div className="cm-bg" style={backgroundUrl ? { backgroundImage: `url("${backgroundUrl}")` } : undefined} />
       <div className="cm-canvas-host" data-layer="canvas">
         <Live2D />

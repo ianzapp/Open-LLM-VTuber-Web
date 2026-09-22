@@ -43,10 +43,10 @@ export function LooksSheet({ onClose }: { onClose: () => void }): JSX.Element {
   };
 
   return (
-    <section className="cm-sheet cm-island" data-testid="looks-sheet" aria-label="Looks">
+    <section className="cm-sheet cm-looks-sheet cm-island" data-testid="looks-sheet" aria-label="Looks">
       <header className="cm-sheet-head">
         <span>Looks</span>
-        <button type="button" className="cm-round cm-sheet-close" aria-label="Close looks" onClick={onClose}>✕</button>
+        <button type="button" className="cm-round cm-sheet-close" aria-label="Close looks sheet" onClick={onClose}>✕</button>
       </header>
       <div className="cm-looks-body">
         {sections.map((section) => {

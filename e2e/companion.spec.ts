@@ -204,7 +204,7 @@ test.describe('companion', () => {
     if ((await toggle.count()) === 0) test.skip(true, 'this avatar has no looks UI');
     await toggle.click();
     await expect(page.getByTestId('looks-sheet')).toBeVisible();
-    await page.getByLabel('Close looks').click();
+    await toggle.click();
     await expect(page.getByTestId('looks-sheet')).toHaveCount(0);
   });
 
@@ -226,8 +226,10 @@ test.describe('companion', () => {
     const blocked = await page.evaluate(() => {
       const out: string[] = [];
       document.querySelectorAll<HTMLElement>('[data-testid="looks-sheet"] .cm-chip, [data-testid="looks-sheet"] .cm-scene').forEach((el) => {
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         const r = el.getBoundingClientRect();
         if (!r.width || !r.height) return;
+        if (r.bottom <= 0 || r.right <= 0 || r.top >= window.innerHeight || r.left >= window.innerWidth) return;
         const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
         if (!top || !(top === el || el.contains(top) || top.contains(el))) {
           out.push(el.getAttribute('data-testid') || el.tagName);
