@@ -50,6 +50,31 @@ describe('groupAvatars', () => {
   it('has no image when there is neither a snapshot nor an avatar picture', () => {
     expect(groupAvatars([c({ avatar: '' })])[0].image).toBe('');
   });
+  it('names avatar by the character_name of the Default mood when present', () => {
+    const groups = groupAvatars([
+      c({ filename: 'sultry.yaml', conf_uid: 'b1', live2d_model_name: 'beach', character_name: 'Beach_sultry', mood_label: 'Sultry' }),
+      c({ filename: 'default.yaml', conf_uid: 'b2', live2d_model_name: 'beach', character_name: 'Beach', mood_label: 'Default' }),
+    ]);
+    expect(groups[0].name).toBe('Beach');
+  });
+  it('when reversed, still names avatar by the Default mood character_name', () => {
+    const groups = groupAvatars([
+      c({ filename: 'beach_sultry.yaml', conf_uid: 'beach_002', live2d_model_name: 'beach', character_name: 'Beach_sultry', mood_label: 'Sultry', avatar: 'beach.jpg' }),
+      c({ filename: 'beach_companion.yaml', conf_uid: 'beach_001', live2d_model_name: 'beach', character_name: 'Beach', mood_label: 'Default', avatar: 'beach.jpg' }),
+    ]);
+    expect(groups[0].name).toBe('Beach');
+  });
+  it('selects the shortest character_name when no Default mood', () => {
+    const groups = groupAvatars([
+      c({ filename: 'a.yaml', conf_uid: 'a', character_name: 'Mao (streamer)', mood_label: 'Calm' }),
+      c({ filename: 'b.yaml', conf_uid: 'b', character_name: 'Mao', mood_label: 'Sassy' }),
+    ]);
+    expect(groups[0].name).toBe('Mao');
+  });
+  it('encodes avatar paths per segment', () => {
+    const groups = groupAvatars([c({ avatar: 'sub dir/pic.png' })]);
+    expect(groups[0].image).toBe('/avatars/sub%20dir/pic.png');
+  });
 });
 
 describe('talkedLine', () => {
@@ -63,6 +88,23 @@ describe('talkedLine', () => {
     expect(talkedLine(now - 21 * 86_400_000, now)).toBe('Talked 3 w ago');
     expect(talkedLine(now + 60_000, now)).toBe('Talked just now');
   });
+  it('boundary: 59s is still just now', () => {
+    expect(talkedLine(now - 59_000, now)).toBe('Talked just now');
+  });
+  it('boundary: 60s becomes 1 min ago', () => {
+    expect(talkedLine(now - 60_000, now)).toBe('Talked 1 min ago');
+  });
+  it('boundary: 3599s is 59 min ago, and 3600s is 1 h ago', () => {
+    expect(talkedLine(now - 3599_000, now)).toBe('Talked 59 min ago');
+    expect(talkedLine(now - 3600_000, now)).toBe('Talked 1 h ago');
+  });
+  it('boundary: 86399s is 23 h ago, and 86400s is 1 d ago', () => {
+    expect(talkedLine(now - 86399_000, now)).toBe('Talked 23 h ago');
+    expect(talkedLine(now - 86400_000, now)).toBe('Talked 1 d ago');
+  });
+  it('boundary: 7 days is 1 w ago', () => {
+    expect(talkedLine(now - 7 * 86_400_000, now)).toBe('Talked 1 w ago');
+  });
 });
 
 describe('routes', () => {
@@ -74,6 +116,12 @@ describe('routes', () => {
     expect(parseRoute('#/c/')).toEqual({ screen: 'gallery' });
     expect(parseRoute('#/nonsense')).toEqual({ screen: 'gallery' });
     expect(routeFor('my model')).toBe('#/c/my%20model');
+  });
+  it('extracts model from route with query params', () => {
+    expect(parseRoute('#/c/mao_pro?tab=x')).toEqual({ screen: 'companion', model: 'mao_pro' });
+  });
+  it('extracts model from route with extra path segments', () => {
+    expect(parseRoute('#/c/mao_pro/extra')).toEqual({ screen: 'companion', model: 'mao_pro' });
   });
 });
 
