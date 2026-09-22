@@ -11,7 +11,7 @@ import { audioManager } from '@/utils/audio-manager';
 import { notify } from '@/utils/notify';
 import { useWebSocket } from '@/context/websocket-context';
 import { DisplayText } from '@/services/websocket-service';
-import { useLive2DExpression } from '@/hooks/canvas/use-live2d-expression';
+import { useLook } from '@/context/look-context';
 import * as LAppDefine from '../../../WebSDK/src/lappdefine';
 
 // Simple type alias for Live2D model
@@ -24,7 +24,7 @@ interface AudioTaskOptions {
   volumes: number[]
   sliceLength: number
   displayText?: DisplayText | null
-  expressions?: string[] | number[] | null
+  expressions?: Array<string | number | null | Record<string, any>> | null
   speaker_uid?: string
   forwarded?: boolean
 }
@@ -38,7 +38,7 @@ export const useAudioTask = () => {
   const { setSubtitleText } = useSubtitle();
   const { appendResponse, appendAIMessage } = useChatHistory();
   const { sendMessage } = useWebSocket();
-  const { setExpression } = useLive2DExpression();
+  const { setEmotion, applyTag } = useLook();
 
   // State refs to avoid stale closures
   const stateRef = useRef({
@@ -56,6 +56,9 @@ export const useAudioTask = () => {
     appendResponse,
     appendAIMessage,
   };
+
+  const lookRef = useRef({ setEmotion, applyTag });
+  lookRef.current = { setEmotion, applyTag };
 
   /**
    * Stop current audio playback and lip sync (delegates to global audioManager)
@@ -127,15 +130,22 @@ export const useAudioTask = () => {
           console.log('Model has _wavFileHandler available');
         }
 
-        // Set expression if available
+        // Emotions and look changes both ride in `expressions`. An item is either the
+        // legacy index/name, or `{kind:'emotion'|'look', …}` from the server's tags.
         const lappAdapter = (window as any).getLAppAdapter?.();
-        if (lappAdapter && expressions?.[0] !== undefined) {
-          setExpression(
-            expressions[0],
-            lappAdapter,
-            `Set expression to: ${expressions[0]}`,
-          );
-        }
+        (expressions ?? []).forEach((item: any) => {
+          const { setEmotion: applyEmotion, applyTag: applyLook } = lookRef.current;
+          if (item === null) { applyEmotion(null); return; }
+          if (typeof item === 'number') { applyEmotion(lappAdapter?.getExpressionName(item) || null); return; }
+          if (typeof item === 'string') { applyEmotion(item); return; }
+          if (item && typeof item === 'object') {
+            if (item.kind === 'emotion') {
+              applyEmotion(typeof item.value === 'number' ? (lappAdapter?.getExpressionName(item.value) || null) : (item.value ?? null));
+            } else if (item.kind === 'look' && typeof item.section === 'string' && typeof item.id === 'string') {
+              applyLook(item.section, item.id);
+            }
+          }
+        });
 
         // Start talk motion
         if (LAppDefine && LAppDefine.PriorityNormal) {
@@ -252,6 +262,7 @@ export const useAudioTask = () => {
       await audioTaskQueue.waitForCompletion();
       if (isMounted && backendSynthComplete) {
         stopCurrentAudioAndLipSync();
+        lookRef.current.setEmotion(null); // the face fades back once the reply is over
         sendMessage({ type: "frontend-playback-complete" });
         setBackendSynthComplete(false);
       }

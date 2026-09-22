@@ -16,6 +16,7 @@ import { ScreenCaptureProvider } from "./context/screen-capture-context";
 import { GroupProvider } from "./context/group-context";
 import { BrowserProvider } from "./context/browser-context";
 import { ModeProvider } from "./context/mode-context";
+import { LookProvider } from "./context/look-context";
 import { CompanionApp } from "./app/companion-app";
 
 function App(): JSX.Element {
@@ -47,7 +48,9 @@ function AppWithGlobalStyles(): JSX.Element {
                             <BrowserProvider>
                               <WebSocketHandler>
                                 <EngineEffects />
-                                <CompanionApp />
+                                <LookProvider>
+                                  <CompanionApp />
+                                </LookProvider>
                               </WebSocketHandler>
                             </BrowserProvider>
                           </GroupProvider>
