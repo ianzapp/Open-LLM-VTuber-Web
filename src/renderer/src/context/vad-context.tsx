@@ -3,7 +3,7 @@ import {
   createContext, useContext, useRef, useCallback, useEffect, useReducer, useMemo, useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MicVAD } from '@ricky0123/vad-web';
+import { AudioNodeVAD } from '@ricky0123/vad-web';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { audioTaskQueue } from '@/utils/task-queue';
 import { useSendAudio } from '@/hooks/utils/use-send-audio';
@@ -106,7 +106,15 @@ export const VADContext = createContext<VADState | null>(null);
 export function VADProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   // Refs for VAD instance and state
-  const vadRef = useRef<MicVAD | null>(null);
+  const vadRef = useRef<{
+    node: AudioNodeVAD;
+    stream: MediaStream;
+    source: MediaStreamAudioSourceNode;
+    mute: GainNode;
+    ctx: AudioContext;
+  } | null>(null);
+  const framesRef = useRef(0);
+  const noAudioWarningTimeoutRef = useRef<any>(null);
   const previousTriggeredProbabilityRef = useRef(0);
   const previousAiStateRef = useRef<AiState>('idle');
 
@@ -225,6 +233,7 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
    * Handle frame processing event
    */
   const handleFrameProcessed = useCallback((probs: { isSpeech: number }) => {
+    framesRef.current += 1;
     if (probs.isSpeech > previousTriggeredProbabilityRef.current) {
       setPreviousTriggeredProbability(probs.isSpeech);
     }
@@ -282,9 +291,15 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
   /**
    * Initialize new VAD instance
    */
-  const initVAD = async () => {
-    const newVAD = await MicVAD.new({
-      model: "v5",
+  const initVAD = async (ctx: AudioContext) => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true,
+      },
+    });
+    const source = new MediaStreamAudioSourceNode(ctx, { mediaStream: stream });
+    const node = await AudioNodeVAD.new(ctx, {
+      model: 'v5',
       preSpeechPadFrames: 20,
       positiveSpeechThreshold: settingsRef.current.positiveSpeechThreshold / 100,
       negativeSpeechThreshold: settingsRef.current.negativeSpeechThreshold / 100,
@@ -297,9 +312,18 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
       onSpeechEnd: handleSpeechEnd,
       onVADMisfire: handleVADMisfire,
     });
-
-    vadRef.current = newVAD;
-    newVAD.start();
+    node.receive(source);
+    // Safari only runs worklet nodes that reach the destination: route through silence.
+    const mute = ctx.createGain();
+    mute.gain.value = 0;
+    // `audioNode` is private in the vad-web typings; it exists at runtime on AudioNodeVAD.
+    (node as any).audioNode.connect(mute);
+    mute.connect(ctx.destination);
+    if (ctx.state !== 'running') await ctx.resume().catch(() => {});
+    vadRef.current = {
+      node, stream, source, mute, ctx,
+    };
+    node.start();
   };
 
   /**
@@ -309,12 +333,31 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     try {
       if (!vadRef.current) {
         console.log('Initializing VAD');
-        await initVAD();
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx: AudioContext = new Ctx();
+        void ctx.resume().catch(() => {}); // inside the gesture: unlocks it on iOS
+        await initVAD(ctx);
       } else {
         console.log('Starting VAD');
-        vadRef.current.start();
+        vadRef.current.node.start();
+        if (vadRef.current.ctx.state !== 'running') {
+          await vadRef.current.ctx.resume().catch(() => {});
+        }
       }
       setMicOn(true);
+      framesRef.current = 0;
+      if (noAudioWarningTimeoutRef.current !== null) {
+        window.clearTimeout(noAudioWarningTimeoutRef.current);
+      }
+      noAudioWarningTimeoutRef.current = window.setTimeout(() => {
+        if (vadRef.current && framesRef.current === 0) {
+          notify(
+            'warning',
+            'The microphone is on but no audio is arriving',
+            'Turn it off and on again; on iPhone make sure Safari has microphone access.',
+          );
+        }
+      }, 4000);
     } catch (error) {
       console.error('Failed to start VAD:', error);
       notify('error', `${t('error.failedStartVAD')}: ${error}`);
@@ -326,9 +369,18 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
    */
   const stopMic = useCallback(() => {
     console.log('Stopping VAD');
-    if (vadRef.current) {
-      vadRef.current.pause();
-      vadRef.current.destroy();
+    if (noAudioWarningTimeoutRef.current !== null) {
+      window.clearTimeout(noAudioWarningTimeoutRef.current);
+      noAudioWarningTimeoutRef.current = null;
+    }
+    const v = vadRef.current;
+    if (v) {
+      v.node.pause();
+      v.node.destroy();
+      v.source.disconnect();
+      v.mute.disconnect();
+      v.stream.getTracks().forEach((tr) => tr.stop());
+      void v.ctx.close().catch(() => {});
       vadRef.current = null;
       console.log('VAD stopped and destroyed successfully');
       setPreviousTriggeredProbability(0);
