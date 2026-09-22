@@ -145,5 +145,28 @@ export class LAppAdapter {
     }
   }
 
+  public getModelScale(): number {
+    const model = this.getModel();
+    if (model && model._modelMatrix) {
+      const matrix = model._modelMatrix.getArray();
+      return matrix[0];
+    }
+    return 1;
+  }
+
+  public setModelScale(s: number): void {
+    const model = this.getModel();
+    if (model && model._modelMatrix) {
+      const matrix = model._modelMatrix.getArray();
+
+      // Update the uniform scale components, keep the translation as-is
+      const newMatrix = [...matrix];
+      newMatrix[0] = s;
+      newMatrix[5] = s;
+
+      model._modelMatrix.setMatrix(newMatrix);
+    }
+  }
+
   // private _live2DMgr: LAppLive2DManager;
 }

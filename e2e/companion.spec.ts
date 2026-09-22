@@ -71,6 +71,87 @@ test.describe('companion', () => {
     expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y)).toBeGreaterThan(0.01);
   });
 
+  test('her position survives a reload', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'touch project only');
+    await page.goto('./#/c/beach');
+    await page.waitForFunction(() => !!(window as any).getLAppAdapter?.().getModel?.(), null, { timeout: 20_000 });
+    await page.waitForTimeout(500);
+
+    const pos = () => page.evaluate(() => (window as any).getLAppAdapter().getModelPosition());
+    const size = page.viewportSize()!;
+    const cx = size.width / 2, cy = size.height * 0.55;
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 1 }] });
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx + i * 6, y: cy - i * 5, id: 1 }] });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+    const dragged = await pos();
+
+    await page.reload();
+    await page.waitForFunction(() => !!(window as any).getLAppAdapter?.().getModel?.(), null, { timeout: 20_000 });
+
+    await expect(async () => {
+      const reloaded = await pos();
+      expect(Math.abs(reloaded.x - dragged.x)).toBeLessThan(0.01);
+      expect(Math.abs(reloaded.y - dragged.y)).toBeLessThan(0.01);
+    }).toPass({ timeout: 25_000 });
+
+    await page.evaluate(() => window.localStorage.removeItem('companion.framing.beach'));
+  });
+
+  test('pinch changes her size and it is remembered', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'touch project only');
+    await page.goto('./#/c/beach');
+    await page.waitForFunction(() => !!(window as any).getLAppAdapter?.().getModel?.(), null, { timeout: 20_000 });
+    await page.waitForTimeout(500);
+
+    const scale = () => page.evaluate(() => (window as any).getLAppAdapter().getModelScale());
+    const size = page.viewportSize()!;
+    const cx = size.width / 2, cy = size.height * 0.55;
+    const startGap = 30;
+    const before = await scale();
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [
+        { x: cx - startGap, y: cy, id: 1 },
+        { x: cx + startGap, y: cy, id: 2 },
+      ],
+    });
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [
+          { x: cx - startGap - i * 8, y: cy, id: 1 },
+          { x: cx + startGap + i * 8, y: cy, id: 2 },
+        ],
+      });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [{ x: cx + startGap + 12 * 8, y: cy, id: 2 }],
+    });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+    const pinched = await scale();
+    expect(pinched).toBeGreaterThan(before * 1.1);
+
+    await page.reload();
+    await page.waitForFunction(() => !!(window as any).getLAppAdapter?.().getModel?.(), null, { timeout: 20_000 });
+
+    await expect(async () => {
+      const reloaded = await scale();
+      expect(Math.abs(reloaded - pinched)).toBeLessThan(0.01);
+    }).toPass({ timeout: 25_000 });
+
+    await page.evaluate(() => window.localStorage.removeItem('companion.framing.beach'));
+  });
+
   test('the bar is always there and the conversation sheet opens and closes', async ({ page }) => {
     await expect(page.getByTestId('chat-bar')).toBeVisible();
     await expect(page.getByTestId('mic')).toBeVisible();

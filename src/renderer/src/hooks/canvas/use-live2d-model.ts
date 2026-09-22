@@ -10,6 +10,7 @@ import { updateModelConfig } from '../../../WebSDK/src/lappdefine';
 import { LAppDelegate } from '../../../WebSDK/src/lappdelegate';
 import { initializeLive2D } from '@cubismsdksamples/main';
 import { useMode } from '@/context/mode-context';
+import { loadFraming, pinchScale, saveFraming } from '../../engine/framing';
 
 interface UseLive2DModelProps {
   modelInfo: ModelInfo | undefined;
@@ -109,6 +110,13 @@ export const useLive2DModel = ({
   const isPotentialTapRef = useRef<boolean>(false); // Flag for ongoing potential tap/drag action
   // ---
 
+  // --- State for Pinch to Resize ---
+  const activePointersRef = useRef<Map<number, Position>>(new Map());
+  const isPinchingRef = useRef<boolean>(false);
+  const pinchStartDistanceRef = useRef<number>(0);
+  const pinchStartScaleRef = useRef<number>(1);
+  // ---
+
   useEffect(() => {
     const currentUrl = modelInfo?.url;
     const sdkScale = (window as any).LAppDefine?.CurrentKScale;
@@ -182,6 +190,45 @@ export const useLive2DModel = ({
     return () => clearTimeout(timer);
   }, [modelInfo?.url, getModelPosition]);
 
+  // Restore a remembered position and size for this avatar once its model has
+  // actually finished loading (polling because "loaded" is a matter of the SDK's
+  // own async setup, not something this effect can await directly).
+  useEffect(() => {
+    if (!modelInfo?.url || !modelInfo?.name) return undefined;
+
+    let cancelled = false;
+    let elapsed = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const INTERVAL_MS = 250;
+    const TIMEOUT_MS = 20_000;
+
+    const tryRestore = () => {
+      if (cancelled) return;
+      const adapter = (window as any).getLAppAdapter?.();
+      if (adapter?.isModelReady?.(modelInfo.url)) {
+        const framing = loadFraming(localStorage, modelInfo.name);
+        if (framing) {
+          adapter.setModelScale(framing.scale);
+          adapter.setModelPosition(framing.x, framing.y);
+          modelPositionRef.current = { x: framing.x, y: framing.y };
+          modelStartPos.current = { x: framing.x, y: framing.y };
+          setPosition({ x: framing.x, y: framing.y });
+        }
+        return;
+      }
+      elapsed += INTERVAL_MS;
+      if (elapsed >= TIMEOUT_MS) return;
+      timer = setTimeout(tryRestore, INTERVAL_MS);
+    };
+
+    timer = setTimeout(tryRestore, INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [modelInfo?.url, modelInfo?.name]);
+
   const getCanvasScale = useCallback(() => {
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
     if (!canvas) return { width: 1, height: 1, scale: 1 };
@@ -203,7 +250,24 @@ export const useLive2DModel = ({
   }, [getCanvasScale]);
 
   const handleMouseDown = useCallback((e: React.PointerEvent) => {
+    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
     const adapter = (window as any).getLAppAdapter?.();
+
+    // --- Pinch Start Logic ---
+    if (activePointersRef.current.size >= 2) {
+      // A second finger just went down: cancel any drag/tap in progress and
+      // start (or restart, if a third finger touched) a pinch instead.
+      isPotentialTapRef.current = false;
+      setIsDragging(false);
+      const [a, b] = Array.from(activePointersRef.current.values()).slice(0, 2);
+      pinchStartDistanceRef.current = Math.hypot(a.x - b.x, a.y - b.y);
+      pinchStartScaleRef.current = adapter?.getModelScale?.() ?? 1;
+      isPinchingRef.current = true;
+      return;
+    }
+    // --- End Pinch Start Logic ---
+
     if (!adapter || !canvasRef.current) return;
 
     const model = adapter.getModel();
@@ -243,9 +307,24 @@ export const useLive2DModel = ({
   }, [canvasRef, modelInfo]);
 
   const handleMouseMove = useCallback((e: React.PointerEvent) => {
+    if (activePointersRef.current.has(e.pointerId)) {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
     const adapter = (window as any).getLAppAdapter?.();
     const view = LAppDelegate.getInstance().getView();
     const model = adapter?.getModel();
+
+    // --- Continue Pinch Logic ---
+    if (isPinchingRef.current && activePointersRef.current.size >= 2) {
+      if (adapter) {
+        const [a, b] = Array.from(activePointersRef.current.values()).slice(0, 2);
+        const currentDistance = Math.hypot(a.x - b.x, a.y - b.y);
+        adapter.setModelScale(pinchScale(pinchStartDistanceRef.current, currentDistance, pinchStartScaleRef.current));
+      }
+      return;
+    }
+    // --- End Continue Pinch Logic ---
 
     // --- Start Drag Logic ---
     if (isPotentialTapRef.current && adapter && view && model && canvasRef.current) {
@@ -336,9 +415,20 @@ export const useLive2DModel = ({
 
   const handleMouseUp = useCallback((e: React.PointerEvent) => {
     (e.target as Element)?.releasePointerCapture?.(e.pointerId);
+    activePointersRef.current.delete(e.pointerId);
     const adapter = (window as any).getLAppAdapter?.();
     const model = adapter?.getModel();
     const view = LAppDelegate.getInstance().getView();
+
+    // --- Finish Pinch Logic ---
+    if (isPinchingRef.current && activePointersRef.current.size < 2) {
+      isPinchingRef.current = false;
+      if (adapter && modelInfo?.name) {
+        const pos = adapter.getModelPosition();
+        saveFraming(localStorage, modelInfo.name, { x: pos.x, y: pos.y, scale: adapter.getModelScale() });
+      }
+    }
+    // --- End Finish Pinch Logic ---
 
     if (isDragging) {
       // Finalize drag
@@ -351,6 +441,9 @@ export const useLive2DModel = ({
           modelPositionRef.current = finalPos;
           modelStartPos.current = finalPos; // Update base position for next potential drag
           setPosition(finalPos);
+          if (modelInfo?.name) {
+            saveFraming(localStorage, modelInfo.name, { ...finalPos, scale: adapter.getModelScale() });
+          }
         }
       }
     } else if (isPotentialTapRef.current && adapter && model && view && canvasRef.current) {
@@ -386,7 +479,18 @@ export const useLive2DModel = ({
     isPotentialTapRef.current = false;
   }, [isDragging, canvasRef, modelInfo]);
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseLeave = useCallback((e?: React.PointerEvent) => {
+    if (e && typeof e.pointerId === 'number') {
+      activePointersRef.current.delete(e.pointerId);
+      if (isPinchingRef.current && activePointersRef.current.size < 2) {
+        isPinchingRef.current = false;
+        const adapter = (window as any).getLAppAdapter?.();
+        if (adapter && modelInfo?.name) {
+          const pos = adapter.getModelPosition();
+          saveFraming(localStorage, modelInfo.name, { x: pos.x, y: pos.y, scale: adapter.getModelScale() });
+        }
+      }
+    }
     if (isDragging) {
       // If dragging and mouse leaves, treat it like a mouse up to end drag
       handleMouseUp({} as React.MouseEvent); // Pass a dummy event or adjust handleMouseUp signature
@@ -400,7 +504,7 @@ export const useLive2DModel = ({
       isHoveringModelRef.current = false;
       electronApi.ipcRenderer.send('update-component-hover', 'live2d-model', false);
     }
-  }, [isPet, isDragging, electronApi, handleMouseUp]);
+  }, [isPet, isDragging, electronApi, handleMouseUp, modelInfo]);
 
   useEffect(() => {
     if (!isPet && electronApi && isHoveringModelRef.current) {
