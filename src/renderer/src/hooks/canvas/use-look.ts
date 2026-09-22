@@ -96,35 +96,44 @@ export function useLookState() {
     };
   }, []);
 
-  const write = useCallback((next: LookState) => {
-    setState(next);
-    if (model) saveLook(window.localStorage, model, next);
-  }, [model]);
+  const allowRef = useRef(allowHerChanges);
+  allowRef.current = allowHerChanges;
+  const catalogueRef = useRef(catalogue);
+  catalogueRef.current = catalogue;
+  const modelRef = useRef(model);
+  modelRef.current = model;
+
+  // Functional update: each call derives its result from the *latest* state at the
+  // moment it runs, not from a `state`/`catalogue`/`model` value captured by closure.
+  // That matters when several tags apply in the same sentence (e.g. `[legs_1] [cocktail]`)
+  // — without this, both calls would start from the same stale snapshot and only the
+  // last one would stick.
+  const write = useCallback((updater: (prev: LookState) => LookState) => {
+    setState((prev) => {
+      const next = updater(prev);
+      if (next !== prev && modelRef.current) saveLook(window.localStorage, modelRef.current, next);
+      return next;
+    });
+  }, []);
 
   const setAllowHerChanges = useCallback((on: boolean) => {
     setAllow(on);
     try { window.localStorage.setItem(ALLOW_KEY, on ? 'on' : 'off'); } catch { /* not remembered */ }
   }, []);
 
-  const allowRef = useRef(allowHerChanges);
-  allowRef.current = allowHerChanges;
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
   const applyTag = useCallback((sectionName: string, id: string) => {
-    const next = applyLookTag(stateRef.current, catalogue, sectionName, id, allowRef.current);
-    if (next !== stateRef.current) write(next);
-  }, [catalogue, write]);
+    write((prev) => applyLookTag(prev, catalogueRef.current, sectionName, id, allowRef.current));
+  }, [write]);
 
   return useMemo(() => ({
     catalogue,
     state,
-    setPose: (id: string | null) => write({ ...stateRef.current, pose: id }),
-    setHand: (id: string | null) => write({ ...stateRef.current, hand: id }),
-    setColour: (id: string | null) => write({ ...stateRef.current, colour: id }),
-    toggleAccessory: (id: string) => write(applyLookTag(stateRef.current, catalogue, 'accessories', id, true)),
-    toggleEffect: (id: string) => write(applyLookTag(stateRef.current, catalogue, 'effects', id, true)),
-    reset: () => write(defaultLookState(catalogue)),
+    setPose: (id: string | null) => write((prev) => ({ ...prev, pose: id })),
+    setHand: (id: string | null) => write((prev) => ({ ...prev, hand: id })),
+    setColour: (id: string | null) => write((prev) => ({ ...prev, colour: id })),
+    toggleAccessory: (id: string) => write((prev) => applyLookTag(prev, catalogueRef.current, 'accessories', id, true)),
+    toggleEffect: (id: string) => write((prev) => applyLookTag(prev, catalogueRef.current, 'effects', id, true)),
+    reset: () => write(() => defaultLookState(catalogueRef.current)),
     setEmotion,
     applyTag,
     allowHerChanges,

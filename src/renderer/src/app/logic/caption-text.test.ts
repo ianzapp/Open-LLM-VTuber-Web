@@ -10,6 +10,15 @@ describe('stripCaptionTags', () => {
   it('keeps ordinary brackets with spaces or punctuation inside', () => {
     expect(stripCaptionTags('See [the docs, page 2] first')).toBe('See [the docs, page 2] first');
   });
+  it('strips a tag whose id has digits, mid-sentence', () => {
+    expect(stripCaptionTags('crossing [legs_1] my legs')).toBe('crossing my legs');
+  });
+  it('strips multiple digit tags around punctuation', () => {
+    expect(stripCaptionTags('[cocktail] cheers [hand_10]!')).toBe('cheers!');
+  });
+  it('keeps a bracketed non-tag with spaces', () => {
+    expect(stripCaptionTags('[not a tag, has spaces]')).toBe('[not a tag, has spaces]');
+  });
   it('collapses leftover whitespace', () => {
     expect(stripCaptionTags('Well [smirk]  okay')).toBe('Well okay');
   });

@@ -1,6 +1,7 @@
-// [joy], [neutral], [sfx:giggle] — one bare word, optionally "word:word". Anything with
-// spaces or punctuation inside the brackets is ordinary text and stays.
-const TAG = /\[[A-Za-z_]+(?::[A-Za-z_]+)?\]/g;
+// [joy], [neutral], [sfx:giggle], [legs_1], [hand_10] — one bare word (letters, digits,
+// underscores), optionally "word:word". Anything with spaces or punctuation inside the
+// brackets is ordinary text and stays.
+const TAG = /\[[A-Za-z0-9_]+(?::[A-Za-z0-9_]+)?\]/g;
 
 export function stripCaptionTags(text: string): string {
   return text.replace(TAG, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
