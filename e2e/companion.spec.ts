@@ -2,12 +2,13 @@ import { expect, test } from '@playwright/test';
 
 test.skip(!process.env.BASE_URL, 'set BASE_URL to a deployed build');
 
+// Plain JavaScript (evaluated in the page): no TypeScript casts here.
 const readParam = (id: string) => `(() => {
-  const m = (window as any).getLAppAdapter?.()?.getModel()?._model;
+  const m = window.getLAppAdapter?.()?.getModel()?._model;
   if (!m) return null;
-  const ids = m._parameterIds;
-  for (let i = 0; i < ids.getSize(); i += 1) {
-    if (ids.at(i).getString().s === '${id}') return m.getParameterValueByIndex(i);
+  const n = m.getParameterCount();
+  for (let i = 0; i < n; i += 1) {
+    if (m.getParameterId(i).getString().s === '${id}') return m.getParameterValueByIndex(i);
   }
   return null;
 })()`;
