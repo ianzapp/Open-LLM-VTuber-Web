@@ -165,6 +165,7 @@ export class LAppAdapter {
       newMatrix[5] = s;
 
       model._modelMatrix.setMatrix(newMatrix);
+      model._userScale = s; // stops the per-frame portrait fit from undoing it
     }
   }
 

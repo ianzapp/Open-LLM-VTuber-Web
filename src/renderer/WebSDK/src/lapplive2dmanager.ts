@@ -154,7 +154,8 @@ export class LAppLive2DManager {
       if (model.getModel()) {
         if (model.getModel().getCanvasWidth() > 1.0 && width < height) {
           // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
-          model.getModelMatrix().setWidth(2.0);
+          // (skipped once the user has chosen a scale: this runs every frame and would undo it)
+          if (model._userScale == null) model.getModelMatrix().setWidth(2.0);
           projection.scale(1.0, width / height);
         } else {
           projection.scale(height / width, 1.0);

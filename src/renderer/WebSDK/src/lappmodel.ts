@@ -1402,6 +1402,9 @@ export class LAppModel extends CubismUserModel {
 
   _modelSetting: ICubismModelSetting; // モデルセッティング情報
   _modelHomeDir: string; // モデルセッティングが置かれたディレクトリ
+  /** Scale chosen by the user (pinch / restored framing). While set, the per-frame
+   *  portrait fit in LAppLive2DManager.onUpdate must not overwrite the model matrix. */
+  _userScale: number | null = null;
   _userTimeSeconds: number; // デルタ時間の積算値[秒]
 
   _eyeBlinkIds: csmVector<CubismIdHandle>; // モデルに設定された瞬き機能用パラメータID
