@@ -3,6 +3,8 @@ export interface Framing {
   x: number;
   y: number;
   scale: number;
+  /** True only when a pinch gesture set the scale; otherwise the stored scale is not restored. */
+  userSized: boolean;
 }
 
 export const MIN_SCALE = 0.4;
@@ -21,9 +23,9 @@ export function loadFraming(storage: Reader, model: string): Framing | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;
-    const { x, y, scale } = parsed as Framing;
+    const { x, y, scale, userSized } = parsed as Framing;
     if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFiniteNumber(scale)) return null;
-    return { x, y, scale };
+    return { x, y, scale, userSized: userSized === true };
   } catch { return null; }
 }
 

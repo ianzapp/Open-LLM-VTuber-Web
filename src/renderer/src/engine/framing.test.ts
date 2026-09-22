@@ -9,13 +9,19 @@ const store = () => {
 describe('loadFraming / saveFraming', () => {
   it('round-trips a saved framing', () => {
     const s = store();
-    const framing: Framing = { x: 12.5, y: -3.25, scale: 1.4 };
+    const framing: Framing = { x: 12.5, y: -3.25, scale: 1.4, userSized: true };
     saveFraming(s, 'beach', framing);
     expect(loadFraming(s, 'beach')).toEqual(framing);
   });
 
   it('returns null when nothing was saved', () => {
     expect(loadFraming(store(), 'beach')).toBeNull();
+  });
+
+  it('defaults userSized to false for a value stored before that field existed', () => {
+    const s = store();
+    s.setItem('companion.framing.beach', JSON.stringify({ x: 1, y: 2, scale: 1.5 }));
+    expect(loadFraming(s, 'beach')).toEqual({ x: 1, y: 2, scale: 1.5, userSized: false });
   });
 
   it('returns null for malformed JSON', () => {
@@ -37,7 +43,7 @@ describe('loadFraming / saveFraming', () => {
       getItem: () => { throw new Error('blocked'); },
       setItem: () => { throw new Error('blocked'); },
     };
-    expect(() => saveFraming(blocked, 'beach', { x: 0, y: 0, scale: 1 })).not.toThrow();
+    expect(() => saveFraming(blocked, 'beach', { x: 0, y: 0, scale: 1, userSized: false })).not.toThrow();
     expect(loadFraming(blocked, 'beach')).toBeNull();
   });
 });

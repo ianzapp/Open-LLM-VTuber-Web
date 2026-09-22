@@ -196,6 +196,9 @@ export const useLive2DModel = ({
   useEffect(() => {
     if (!modelInfo?.url || !modelInfo?.name) return undefined;
 
+    activePointersRef.current.clear();
+    isPinchingRef.current = false;
+
     let cancelled = false;
     let elapsed = 0;
     let timer: ReturnType<typeof setTimeout>;
@@ -208,8 +211,10 @@ export const useLive2DModel = ({
       if (adapter?.isModelReady?.(modelInfo.url)) {
         const framing = loadFraming(localStorage, modelInfo.name);
         if (framing) {
-          adapter.setModelScale(framing.scale);
           adapter.setModelPosition(framing.x, framing.y);
+          if (framing.userSized) {
+            adapter.setModelScale(framing.scale);
+          }
           modelPositionRef.current = { x: framing.x, y: framing.y };
           modelStartPos.current = { x: framing.x, y: framing.y };
           setPosition({ x: framing.x, y: framing.y });
@@ -264,6 +269,7 @@ export const useLive2DModel = ({
       pinchStartDistanceRef.current = Math.hypot(a.x - b.x, a.y - b.y);
       pinchStartScaleRef.current = adapter?.getModelScale?.() ?? 1;
       isPinchingRef.current = true;
+      (e.target as Element).setPointerCapture?.(e.pointerId);
       return;
     }
     // --- End Pinch Start Logic ---
@@ -425,7 +431,7 @@ export const useLive2DModel = ({
       isPinchingRef.current = false;
       if (adapter && modelInfo?.name) {
         const pos = adapter.getModelPosition();
-        saveFraming(localStorage, modelInfo.name, { x: pos.x, y: pos.y, scale: adapter.getModelScale() });
+        saveFraming(localStorage, modelInfo.name, { x: pos.x, y: pos.y, scale: adapter.getModelScale(), userSized: true });
       }
     }
     // --- End Finish Pinch Logic ---
@@ -442,7 +448,12 @@ export const useLive2DModel = ({
           modelStartPos.current = finalPos; // Update base position for next potential drag
           setPosition(finalPos);
           if (modelInfo?.name) {
-            saveFraming(localStorage, modelInfo.name, { ...finalPos, scale: adapter.getModelScale() });
+            const prevFraming = loadFraming(localStorage, modelInfo.name);
+            saveFraming(localStorage, modelInfo.name, {
+              ...finalPos,
+              scale: adapter.getModelScale(),
+              userSized: prevFraming?.userSized ?? false,
+            });
           }
         }
       }
@@ -487,7 +498,7 @@ export const useLive2DModel = ({
         const adapter = (window as any).getLAppAdapter?.();
         if (adapter && modelInfo?.name) {
           const pos = adapter.getModelPosition();
-          saveFraming(localStorage, modelInfo.name, { x: pos.x, y: pos.y, scale: adapter.getModelScale() });
+          saveFraming(localStorage, modelInfo.name, { x: pos.x, y: pos.y, scale: adapter.getModelScale(), userSized: true });
         }
       }
     }
